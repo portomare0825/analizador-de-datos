@@ -988,7 +988,7 @@ export function TaxAuditPage() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center lg:justify-end w-full lg:w-auto">
                                 <div className="relative w-full sm:w-48">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <SearchIcon className="h-4 w-4 text-brand-400" />
@@ -1090,7 +1090,7 @@ export function TaxAuditPage() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center lg:justify-end w-full lg:w-auto">
                                 <div className="relative w-full sm:w-48">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <SearchIcon className="h-4 w-4 text-brand-400" />
@@ -1191,7 +1191,7 @@ export function TaxAuditPage() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center lg:justify-end w-full lg:w-auto">
                                 <HotelDropdown selected={selectedHotelFilter} onChange={setSelectedHotelFilter} />
 
                                 {/* Input Factura */}
@@ -1354,7 +1354,7 @@ export function TaxAuditPage() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center lg:justify-end w-full lg:w-auto">
                                 <div className="relative w-full sm:w-48">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <SearchIcon className="h-4 w-4 text-brand-400" />

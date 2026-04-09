@@ -575,7 +575,7 @@ export function TransactionsPage() {
                                 </div>
 
                                 {/* Barra de Filtro y Acciones */}
-                                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                                <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto lg:justify-end">
                                     {/* Input de Búsqueda */}
                                     <div className="relative w-full sm:w-64">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
