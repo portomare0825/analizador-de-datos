@@ -1,0 +1,75 @@
+{
+  "name": "analizador-de-datos",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/portomare0825/analizador-de-datos.git"
+  },
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && electron-builder",
+    "package": "vite build && electron-builder --win",
+    "publish": "vite build && electron-builder --win -p always",
+    "push-update": "npm version patch && npm run publish",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "1.29.1",
+    "@supabase/supabase-js": "^2.87.1",
+    "electron-updater": "^6.8.3",
+    "fs": "^0.0.1-security",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "path": "^0.12.7",
+    "react": "19.2.0",
+    "react-dom": "^19.2.0",
+    "url": "^0.11.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "png-to-ico": "^3.0.1",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "build": {
+    "appId": "com.analizador.cxc",
+    "productName": "Analizador de Datos",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "win": {
+      "forceCodeSigning": false,
+      "target": [
+        "nsis"
+      ],
+      "publish": [
+        "github"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "portomare0825",
+      "repo": "analizador-de-datos"
+    }
+  }
+}
