@@ -756,7 +756,7 @@ export function AuditPage() {
         const { source, status, originalStatus, arrivalDateStart, arrivalDateEnd, departureDateStart, departureDateEnd, reservationSearch, cancelledFilter } = filters;
 
         // FILTRO DE CANCELADAS/NO SHOW según el modo seleccionado
-        const cancelTerms = ['cancelado', 'cancelled', 'no show', 'noshow'];
+        const cancelTerms = ['cancelado', 'cancelada', 'cancelled', 'no show', 'noshow'];
 
         filteredData = filteredData.filter(row => {
             const rowStatus = String(row[statusLabel] || '').toLowerCase();
