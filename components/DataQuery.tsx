@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SimpleMarkdown } from './SimpleMarkdown';
 import { SendIcon } from './icons/SendIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { GLOBAL_AI_CONFIG } from '../services/aiProviders';
 import type { ChatMessage } from '../types';
 
 interface DataQueryProps {
@@ -13,14 +14,10 @@ interface DataQueryProps {
 
 export const DataQuery: React.FC<DataQueryProps> = ({ onQuery, history, isQuerying }) => {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState(GLOBAL_AI_CONFIG.defaultModelId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const availableModels = [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-  ];
+  const availableModels = GLOBAL_AI_CONFIG.availableModels;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

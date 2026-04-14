@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat } from "@google/genai";
+import { GLOBAL_AI_CONFIG } from '../services/aiProviders';
+import { queryAI } from '../services/aiService';
 import type { ChatMessage } from '../types';
 import { ChatIcon } from './icons/ChatIcon';
 import { CloseIcon } from './icons/CloseIcon';
@@ -14,15 +16,11 @@ export const Chatbot: React.FC = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+    const [selectedModel, setSelectedModel] = useState(GLOBAL_AI_CONFIG.defaultModelId);
     const chatRef = useRef<Chat | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const availableModels = [
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-        { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
-        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-    ];
+    const availableModels = GLOBAL_AI_CONFIG.availableModels;
 
     useEffect(() => {
         if (isOpen) {
@@ -66,14 +64,11 @@ export const Chatbot: React.FC = () => {
         setError(null);
 
         try {
-            const response = await chatRef.current.sendMessage({ message: userMessage.text });
-
-            if (response && response.text) {
-                const modelMessage: ChatMessage = { role: 'model', text: response.text };
-                setMessages(prev => [...prev, modelMessage]);
-            } else {
-                throw new Error("Respuesta inesperada de la API.");
-            }
+            // Usamos queryAI para manejar globalmente tanto Gemini como DeepSeek
+            const responseText = await queryAI("", input, messages, undefined, selectedModel);
+            
+            const modelMessage: ChatMessage = { role: 'model', text: responseText };
+            setMessages(prev => [...prev, modelMessage]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Ocurrió un error desconocido.';
             setError(`Error al obtener respuesta: ${errorMessage}`);

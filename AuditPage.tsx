@@ -7,7 +7,7 @@ import { ErrorMessage } from './components/ErrorMessage';
 import { SparklesIcon } from './components/icons/SparklesIcon';
 import { BuildingOfficeIcon } from './components/icons/BuildingOfficeIcon';
 import { parseFileToJSON } from './utils/fileParser';
-import { queryData } from './services/geminiService';
+import { queryAI } from './services/aiService';
 import { fetchDataFromSupabase } from './services/supabaseService';
 import type { Filters, DataRow, SummaryData, SourceSummary, ChatMessage } from './types';
 import { FilterBar } from './components/FilterBar';
@@ -707,7 +707,7 @@ export function AuditPage() {
                 return { error: 'Función no reconocida' };
             };
 
-            const result = await queryData(csvData, question, geminiHistory, toolHandler, modelName);
+            const result = await queryAI(csvData, question, geminiHistory, toolHandler, modelName);
             const modelMessage: ChatMessage = { role: 'model', text: result };
             setQueryHistory(prev => [...prev, modelMessage]);
 
