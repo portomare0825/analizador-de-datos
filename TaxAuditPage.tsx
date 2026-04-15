@@ -218,6 +218,7 @@ const HotelDropdown: React.FC<HotelDropdownProps> = ({ selected, onChange }) => 
 export function TaxAuditPage() {
     const [activeTab, setActiveTab] = useState<Tab>('rate-input');
     const [exchangeRate, setExchangeRate] = useState<string>('');
+    const [euroRate, setEuroRate] = useState<string>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSavingRate, setIsSavingRate] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -553,7 +554,8 @@ export function TaxAuditPage() {
                 fetchAllUniqueSources()
             ]);
             if (rate) {
-                setExchangeRate(rate.toString());
+                setExchangeRate(rate.usd?.toString() || '');
+                setEuroRate(rate.eur?.toString() || '');
             }
             if (sources) {
                 setGlobalSources(sources);
@@ -639,7 +641,8 @@ export function TaxAuditPage() {
         if (!exchangeRate || isNaN(parseFloat(exchangeRate))) return;
 
         setIsSavingRate(true);
-        const success = await saveExchangeRate(todayISO, parseFloat(exchangeRate));
+        const eurValue = euroRate && !isNaN(parseFloat(euroRate)) ? parseFloat(euroRate) : undefined;
+        const success = await saveExchangeRate(todayISO, parseFloat(exchangeRate), eurValue);
 
         setIsSavingRate(false);
         if (success) {
@@ -1561,6 +1564,22 @@ export function TaxAuditPage() {
                                     />
                                 </div>
                                 <p className="text-xs text-brand-500 mt-1">Esta tasa se usará para calcular la facturación del día.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-brand-300 mb-1">Tasa de Cambio (Bs/EUR)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2 text-brand-500">Bs.</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={euroRate}
+                                        onChange={(e) => setEuroRate(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full bg-brand-800 border border-brand-600 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono text-lg"
+                                    />
+                                </div>
+                                <p className="text-xs text-brand-500 mt-1">Tasa de cambio del euro para el día.</p>
                             </div>
 
                             <button

@@ -241,32 +241,34 @@ export const fetchDataFromSupabase = async (
 
 export const getExchangeRate = async (
     date: string
-): Promise<number | null> => {
+): Promise<{ usd: number | null; eur: number | null }> => {
     try {
         const { data, error } = await supabase
             .from('tasas_cambiarias')
-            .select('monto')
+            .select('monto, euro')
             .eq('fecha', date)
             .maybeSingle();
 
-        if (error || !data) return null;
-        return Number(data.monto);
+        if (error || !data) return { usd: null, eur: null };
+        return { usd: Number(data.monto), eur: data.euro ? Number(data.euro) : null };
     } catch (error) {
         console.error("Error fetching exchange rate:", error);
-        return null;
+        return { usd: null, eur: null };
     }
 };
 
 export const saveExchangeRate = async (
     date: string,
-    rate: number
+    rate: number,
+    euroRate?: number
 ): Promise<boolean> => {
     try {
         const { error } = await supabase
             .from('tasas_cambiarias')
             .upsert({
                 fecha: date,
-                monto: rate
+                monto: rate,
+                euro: euroRate || null
             }, { onConflict: 'fecha' });
 
         if (error) {
