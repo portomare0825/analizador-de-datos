@@ -207,7 +207,8 @@ export function DashboardPage() {
             const critical = [...filteredData]
                 .filter(r => {
                     const status = (r['Estado de la Reserva'] || '').toString().toLowerCase();
-                    return !status.includes('cancel');
+                    const pending = parseFloat(r['Saldo Pendiente']) || 0;
+                    return !status.includes('cancel') && pending > 0;
                 })
                 .sort((a, b) => (parseFloat(b['Saldo Pendiente']) || 0) - (parseFloat(a['Saldo Pendiente']) || 0))
                 .slice(0, 5);
