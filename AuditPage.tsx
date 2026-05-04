@@ -8,7 +8,7 @@ import { parseFileToJSON } from './utils/fileParser';
 import { fetchDataFromSupabase } from './services/supabaseService';
 import type { Filters, DataRow, SummaryData, SourceSummary } from './types';
 import { FilterBar } from './components/FilterBar';
-import { processDatabaseData } from './utils/dataProcessor';
+import { processDatabaseData, DESIRED_COLUMNS_CONFIG, findKey } from './utils/dataProcessor';
 import { DataTable } from './components/DataTable';
 import { SummaryDisplay } from './components/SummaryDisplay';
 import { SourceSummaryDisplay } from './components/SourceSummaryDisplay';
