@@ -57,6 +57,7 @@ export function DashboardPage() {
         data: [],
         type: 'currency'
     });
+    const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const months = [
@@ -535,7 +536,16 @@ export function DashboardPage() {
                                     </td>
                                     <td className="py-4 text-rose-400 font-bold">{formatCurrency(parseFloat(res['Saldo Pendiente']) || 0)}</td>
                                     <td className="py-4 pr-2 text-right">
-                                        <button className="text-brand-400 hover:text-white transition-colors">Ver Detalles</button>
+                                        <button
+                                            onClick={() => setSelectedReservation(res)}
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:text-white bg-brand-800/50 hover:bg-brand-700 border border-brand-700/50 hover:border-brand-500 px-3 py-1.5 rounded-lg transition-all duration-200 group"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Ver Detalles
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -544,13 +554,19 @@ export function DashboardPage() {
                 </div>
             </div>
 
-            {/* Detail Modal */}
+            {/* Detail Modal - KPI Breakdown */}
             {modalConfig.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-brand-900 border border-brand-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                >
+                    <div
+                        className="bg-brand-900 border border-brand-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
                         <div className="p-6 border-b border-brand-800 flex justify-between items-center bg-brand-950/50">
                             <h3 className="text-xl font-bold">{modalConfig.title}</h3>
-                            <button 
+                            <button
                                 onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
                                 className="p-2 hover:bg-brand-800 rounded-xl transition-colors"
                             >
@@ -576,9 +592,124 @@ export function DashboardPage() {
                             )}
                         </div>
                         <div className="p-6 bg-brand-950/50 border-t border-brand-800">
-                            <button 
+                            <button
                                 onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
                                 className="w-full py-3 bg-brand-800 hover:bg-brand-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98]"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reservation Detail Modal */}
+            {selectedReservation && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                    onClick={() => setSelectedReservation(null)}
+                >
+                    <div
+                        className="bg-brand-900 border border-brand-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-brand-800 to-brand-900 p-6 border-b border-brand-700 flex justify-between items-start">
+                            <div>
+                                <p className="text-brand-400 text-xs uppercase tracking-widest mb-1">Detalle de Reserva</p>
+                                <h3 className="text-2xl font-bold text-white">{selectedReservation['Nombre'] || 'Huésped sin nombre'}</h3>
+                                <p className="text-brand-300 font-mono text-sm mt-0.5">#{selectedReservation['Numero de la reserva'] || '—'}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedReservation(null)}
+                                className="p-2 hover:bg-brand-700 rounded-xl transition-colors mt-0.5"
+                                title="Cerrar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">
+
+                            {/* Fuente + Estado */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Fuente</p>
+                                    <p className="font-semibold text-white">{selectedReservation['Fuente'] || '—'}</p>
+                                </div>
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Estado</p>
+                                    <p className="font-semibold text-white">{selectedReservation['Estado de la Reserva'] || '—'}</p>
+                                </div>
+                            </div>
+
+                            {/* Fechas */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Llegada</p>
+                                    <p className="font-semibold text-white">
+                                        {selectedReservation['Fecha de llegada'] instanceof Date
+                                            ? selectedReservation['Fecha de llegada'].toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+                                            : selectedReservation['Fecha de llegada'] || '—'}
+                                    </p>
+                                </div>
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Salida</p>
+                                    <p className="font-semibold text-white">
+                                        {selectedReservation['Salida'] instanceof Date
+                                            ? selectedReservation['Salida'].toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+                                            : selectedReservation['Salida'] || '—'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Hab + Noches + Pax */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Habitación</p>
+                                    <p className="font-bold text-white text-lg">{selectedReservation['Numero de habitacion'] || '—'}</p>
+                                </div>
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Noches</p>
+                                    <p className="font-bold text-white text-lg">{selectedReservation['Noches'] || '—'}</p>
+                                </div>
+                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
+                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Pax</p>
+                                    <p className="font-bold text-white text-lg">
+                                        {(parseInt(selectedReservation['Adultos']) || 0) + (parseInt(selectedReservation['Niños']) || 0)}
+                                        <span className="text-brand-400 text-xs font-normal ml-1">
+                                            ({selectedReservation['Adultos'] || 0}A / {selectedReservation['Niños'] || 0}N)
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Montos */}
+                            <div className="bg-brand-800/20 rounded-2xl p-4 border border-brand-700/50 space-y-3">
+                                <p className="text-brand-400 text-xs uppercase tracking-wider">Resumen Financiero</p>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-brand-300 text-sm">Total General</span>
+                                    <span className="font-mono font-semibold text-white">{formatCurrency(parseFloat(selectedReservation['Total General']) || 0)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-brand-300 text-sm">Monto Pagado</span>
+                                    <span className="font-mono font-semibold text-emerald-400">{formatCurrency(parseFloat(selectedReservation['Monto Pagado']) || 0)}</span>
+                                </div>
+                                <div className="border-t border-brand-700 pt-3 flex justify-between items-center">
+                                    <span className="text-brand-200 text-sm font-semibold">Saldo Pendiente</span>
+                                    <span className="font-mono font-bold text-rose-400 text-lg">{formatCurrency(parseFloat(selectedReservation['Saldo Pendiente']) || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 bg-brand-950/60 border-t border-brand-800">
+                            <button
+                                onClick={() => setSelectedReservation(null)}
+                                className="w-full py-2.5 bg-brand-800 hover:bg-brand-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98]"
                             >
                                 Cerrar
                             </button>
