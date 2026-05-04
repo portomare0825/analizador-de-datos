@@ -223,6 +223,8 @@ export function TaxAuditPage() {
     const [isSavingRate, setIsSavingRate] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [isCxCSummaryOpen, setIsCxCSummaryOpen] = useState(false);
+    const [isLoadingRate, setIsLoadingRate] = useState(false);
+    const [hasExistingRate, setHasExistingRate] = useState<boolean | null>(null);
 
     // Usar contexto compartido para hotel selection
     const { hotel, setHotel } = useHotel();
@@ -255,6 +257,42 @@ export function TaxAuditPage() {
     const todayDate = new Date();
     const todayFormatted = todayDate.toLocaleDateString('es-VE'); // Visual
     const todayISO = todayDate.toISOString().split('T')[0]; // YYYY-MM-DD for DB
+
+    // Estado para la fecha seleccionable en el modal
+    const [selectedDate, setSelectedDate] = useState<string>(todayISO);
+
+    // Efecto para cargar datos de tasa cuando cambia la fecha o se abre el modal
+    useEffect(() => {
+        const loadRateData = async () => {
+            if (!isModalOpen || !selectedDate) return;
+            
+            setIsLoadingRate(true);
+            setHasExistingRate(null);
+            
+            try {
+                const rateData = await getExchangeRate(selectedDate);
+                
+                if (rateData.usd !== null) {
+                    setHasExistingRate(true);
+                    setExchangeRate(rateData.usd.toString());
+                    setEuroRate(rateData.eur !== null ? rateData.eur.toString() : '');
+                } else {
+                    setHasExistingRate(false);
+                    setExchangeRate('');
+                    setEuroRate('');
+                }
+            } catch (error) {
+                console.error('Error cargando tasa:', error);
+                setHasExistingRate(false);
+                setExchangeRate('');
+                setEuroRate('');
+            } finally {
+                setIsLoadingRate(false);
+            }
+        };
+
+        loadRateData();
+    }, [isModalOpen, selectedDate]);
 
     // Definición explícita de columnas para Facturación Cerrada
     const invoiceHeaders = ['Registro Reserva', 'Factura', 'Fecha Factura', 'Monto Divisa', 'Monto Bs', 'Fuente'];
@@ -642,7 +680,7 @@ export function TaxAuditPage() {
 
         setIsSavingRate(true);
         const eurValue = euroRate && !isNaN(parseFloat(euroRate)) ? parseFloat(euroRate) : undefined;
-        const success = await saveExchangeRate(todayISO, parseFloat(exchangeRate), eurValue);
+        const success = await saveExchangeRate(selectedDate, parseFloat(exchangeRate), eurValue);
 
         setIsSavingRate(false);
         if (success) {
@@ -1161,6 +1199,28 @@ export function TaxAuditPage() {
                                     </div>
                                 </div>
                             )}
+                                                    
+                            {/* Indicadores de estado y datos existentes */}
+                            {!loading && !error && (
+                                <div className="p-4 border-b border-brand-800 bg-brand-900/30">
+                                    {filteredData.length > 0 ? (
+                                        <div className="flex items-center gap-2 text-blue-300 text-sm">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>Se encontraron {filteredData.length} registros para mostrar.</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>No hay datos disponibles para los filtros seleccionados.</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        
                             {error ? (
                                 <div className="flex items-center justify-center h-64 text-red-400">
                                     {error}
@@ -1543,10 +1603,11 @@ export function TaxAuditPage() {
                             <div>
                                 <label className="block text-sm font-medium text-brand-300 mb-1">Fecha</label>
                                 <input
-                                    type="text"
-                                    value={todayFormatted}
-                                    disabled
-                                    className="w-full bg-brand-800/50 border border-brand-700 rounded-lg px-3 py-2 text-brand-400 cursor-not-allowed"
+                                    type="date"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    disabled={isLoadingRate}
+                                    className="w-full bg-brand-800 border border-brand-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                             </div>
 
@@ -1560,7 +1621,8 @@ export function TaxAuditPage() {
                                         value={exchangeRate}
                                         onChange={(e) => setExchangeRate(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full bg-brand-800 border border-brand-600 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono text-lg"
+                                        disabled={isLoadingRate}
+                                        className="w-full bg-brand-800 border border-brand-600 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <p className="text-xs text-brand-500 mt-1">Esta tasa se usará para calcular la facturación del día.</p>
@@ -1576,7 +1638,8 @@ export function TaxAuditPage() {
                                         value={euroRate}
                                         onChange={(e) => setEuroRate(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full bg-brand-800 border border-brand-600 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono text-lg"
+                                        disabled={isLoadingRate}
+                                        className="w-full bg-brand-800 border border-brand-600 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <p className="text-xs text-brand-500 mt-1">Tasa de cambio del euro para el día.</p>

@@ -116,7 +116,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, requiredPr
             ref={fileInputRef}
             onChange={handleFileChange}
             className="hidden"
-            accept=".xlsx, .xls, .csv"
+            accept=".xlsx"
             />
             <div className="flex flex-col items-center text-brand-300">
                 <UploadIcon className="w-12 h-12 mb-4" />

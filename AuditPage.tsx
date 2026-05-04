@@ -1,5 +1,3 @@
-
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { Spinner } from './components/Spinner';
@@ -556,6 +554,34 @@ export function AuditPage() {
             handleReset();
             return;
         }
+
+        // Validación 1: El archivo debe empezar con "reservations" y ser .xlsx
+        const lowerName = file.name.toLowerCase();
+        if (!lowerName.startsWith('reservations') || !lowerName.endsWith('.xlsx')) {
+            setAppState({
+                ...initialState,
+                status: 'error',
+                error: `Error: El archivo debe llamarse "reservations*.xlsx". Nombre actual: "${file.name}"`,
+                fileToProcess: null
+            });
+            return;
+        }
+
+        // Validación 2: Verificar que el hotel activo esté seleccionado
+        const isPlusActive = activeTable === TABLE_PLUS;
+        const isPalmActive = activeTable === TABLE_PALM;
+
+        if (!isPlusActive && !isPalmActive) {
+            setAppState({
+                ...initialState,
+                status: 'error',
+                error: 'Error: Debes seleccionar un hotel activo (LD\' Plus o LD\' Palm Beach) antes de cargar el archivo.',
+                fileToProcess: null
+            });
+            return;
+        }
+
+        // Si pasa las validaciones iniciales, proceder con la carga
         setAppState({ ...initialState, status: 'loading', fileName: file.name, fileToProcess: file });
     };
 
@@ -626,9 +652,53 @@ export function AuditPage() {
 
                     const { data: processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap } = processAndRenameData(originalData, originalHeaders);
 
+                    // --- Validación de columna "U" (Número de habitación) según hotel activo ---
+                    const roomKey = 'Numero de habitacion';
+                    const isPlusActive = activeTable === TABLE_PLUS;
+                    const expectedDigits = isPlusActive ? 4 : 3;
+                    const hotelName = isPlusActive ? "LD' Plus" : "LD' Palm Beach";
+
+                    if (!allHeaders.includes(roomKey)) {
+                        throw new Error(`El archivo no contiene la columna "U" (Numero de habitacion). No se puede verificar la validez del archivo.`);
+                    }
+
+                    // Analizar todos los registros de la columna "U"
+                    let invalidCount = 0;
+                    let totalValidRooms = 0;
+                    const sampleSize = Math.min(processedData.length, 200); // Muestra de 200 registros
+
+                    for (let i = 0; i < sampleSize; i++) {
+                        const val = processedData[i][roomKey];
+                        if (val !== null && val !== undefined && val !== '') {
+                            const strVal = String(val).trim();
+                            
+                            // Verificar si es un número puro (solo dígitos)
+                            if (/^\d+$/.test(strVal)) {
+                                totalValidRooms++;
+                                
+                                // Verificar si tiene la cantidad de dígitos esperada
+                                if (strVal.length !== expectedDigits) {
+                                    invalidCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    // Si hay habitaciones inválidas, mostrar error detallado
+                    if (invalidCount > 0 && totalValidRooms > 0) {
+                        const wrongHotel = hotelName === "LD' Plus" ? "LD' Palm Beach" : "LD' Plus";
+                        throw new Error(
+                            `El archivo seleccionado corresponde a ${wrongHotel}.\n\n` +
+                            `Hotel activo: ${hotelName}\n\n` +
+                            `Por favor, selecciona el hotel correcto o carga un archivo válido.`
+                        );
+                    }
+
+                    // --- Fin: Validación de columna "U" ---
+
                     // --- Inicio: Lógica de detección de hotel basada en número de habitación ---
                     let hotelVariable = "";
-                    const roomKey = 'Numero de habitacion';
+                    // roomKey ya está definido arriba
 
                     if (allHeaders.includes(roomKey)) {
                         let count3Digits = 0;
