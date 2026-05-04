@@ -17,7 +17,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "1.29.1",
     "@supabase/supabase-js": "^2.87.1",
     "electron-updater": "^6.8.3",
     "fs": "^0.0.1-security",
@@ -41,7 +40,7 @@
   },
   "build": {
     "appId": "com.analizador.cxc",
-    "productName": "Analizador de Datos",
+    "productName": "Auditoría de Ingresos",
     "directories": {
       "output": "release"
     },

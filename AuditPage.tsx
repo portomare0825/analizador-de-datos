@@ -5,14 +5,12 @@ import { ErrorMessage } from './components/ErrorMessage';
 import { SparklesIcon } from './components/icons/SparklesIcon';
 import { BuildingOfficeIcon } from './components/icons/BuildingOfficeIcon';
 import { parseFileToJSON } from './utils/fileParser';
-import { queryAI } from './services/aiService';
 import { fetchDataFromSupabase } from './services/supabaseService';
-import type { Filters, DataRow, SummaryData, SourceSummary, ChatMessage } from './types';
+import type { Filters, DataRow, SummaryData, SourceSummary } from './types';
 import { FilterBar } from './components/FilterBar';
 import { DataTable } from './components/DataTable';
 import { SummaryDisplay } from './components/SummaryDisplay';
 import { SourceSummaryDisplay } from './components/SourceSummaryDisplay';
-import { DataQuery } from './components/DataQuery';
 import { DateRangePicker } from './components/DateRangePicker';
 import { ColumnSelector } from './components/ColumnSelector';
 import { ExportMenu } from './components/ExportMenu';
@@ -91,23 +89,6 @@ const DESIRED_COLUMNS_CONFIG = [
     // UPDATE: Removed 'estado' from Region to allow 'Estado de la Reserva' to capture it
     { key: 'Region', keywords: ['provincia', 'region', 'state'] },
 ];
-
-
-const jsonToCSV = (jsonData: Record<string, any>[]): string => {
-    if (!jsonData || jsonData.length === 0) {
-        return '';
-    }
-    const headers = Object.keys(jsonData[0]);
-    const csvRows = [headers.join(',')];
-    for (const row of jsonData) {
-        const values = headers.map(header => {
-            const escaped = ('' + row[header]).replace(/"/g, '""');
-            return `"${escaped}"`;
-        });
-        csvRows.push(values.join(','));
-    }
-    return csvRows.join('\n');
-};
 
 /**
  * Finds the best matching header from a list of headers based on a prioritized list of keywords.
@@ -491,19 +472,18 @@ const processDatabaseData = (dbData: DataRow[]): { data: DataRow[], allHeaders: 
 
 export function AuditPage() {
     const [appState, setAppState] = useState<AppState>(initialState);
+    const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
     const [filters, setFilters] = useState<Filters>(initialFilters);
     const [sources, setSources] = useState<string[]>([]);
     const [statuses, setStatuses] = useState<string[]>([]);
     const [originalStatuses, setOriginalStatuses] = useState<string[]>([]);
+    const [summaryData, setSummaryData] = useState<SummaryData>(initialSummary);
+    const [sourceSummary, setSourceSummary] = useState<any[]>([]);
 
     // Dynamic labels for status columns based on source (DB vs File)
     const [statusLabel, setStatusLabel] = useState('Estado de la Reserva');
     const [originalStatusLabel, setOriginalStatusLabel] = useState('Estado (Original)');
 
-    const [summaryData, setSummaryData] = useState<SummaryData>(initialSummary);
-    const [sourceSummary, setSourceSummary] = useState<SourceSummary[]>([]);
-    const [queryHistory, setQueryHistory] = useState<ChatMessage[]>([]);
-    const [isQuerying, setIsQuerying] = useState(false);
     const [pickerType, setPickerType] = useState<null | 'arrival' | 'departure'>(null);
     const [pickerTopOffset, setPickerTopOffset] = useState(0);
     const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
@@ -513,24 +493,30 @@ export function AuditPage() {
 
     // Función reutilizable para cargar datos de Supabase
     const loadDatabaseData = useCallback(async (tableName: string) => {
-        setAppState(prev => ({ ...prev, status: 'loading' }));
-
+        setAppState(prev => ({ ...prev, status: 'loading', error: null }));
+        setLoadingProgress({ current: 0, total: 0 });
+        
         try {
-            const dbData = await fetchDataFromSupabase(tableName);
-
-            if (dbData && dbData.length > 0) {
-                const { data: processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap } = processDatabaseData(dbData);
-
-                // Determinar tipo de hotel basado en la tabla
-                const hotelType = tableName === TABLE_PALM ? 'Palm' : 'Plus';
-                const displayName = `Base de Datos: LD' ${hotelType}`;
-
-                // Pass true for isDatabase
-                configureDataState(processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap, displayName, hotelType, true);
-            } else {
-                // If no data in DB, go to idle state to allow file upload
-                setAppState(prev => ({ ...initialState, status: 'idle' }));
+            const dbData = await fetchDataFromSupabase(
+                tableName, 
+                20000, 
+                undefined, 
+                (current, total) => setLoadingProgress({ current, total })
+            );
+            
+            if (!dbData || dbData.length === 0) {
+                setAppState(prev => ({ ...prev, status: 'idle' }));
+                return;
             }
+
+            const { data: processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap } = processDatabaseData(dbData);
+
+            // Determinar tipo de hotel basado en la tabla
+            const hotelType = tableName === TABLE_PALM ? 'Palm' : 'Plus';
+            const displayName = `Base de Datos: LD' ${hotelType}`;
+
+            // Pass true for isDatabase
+            configureDataState(processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap, displayName, hotelType, true);
         } catch (error) {
             console.error(`Error loading data from database table ${tableName}:`, error);
             // Fallback to idle state on error so user can upload a file manually
@@ -593,37 +579,21 @@ export function AuditPage() {
         setStatusLabel('Estado de la Reserva');
         setOriginalStatusLabel('Estado (Original)');
 
-        const currentStatusLabel = 'Estado de la Reserva';
-        const currentOriginalStatusLabel = 'Estado'; // Fallback if needed, usually not used if Estado de la Reserva has the data
+        // Optimización: Un solo paso para extraer fuentes y estados únicos
+        const uniqueSourcesSet = new Set<string>();
+        const uniqueStatusesSet = new Set<string>();
+        const uniqueOriginalStatusesSet = new Set<string>();
 
         const sourceKey = 'Fuente';
-        if (allHeaders.includes(sourceKey)) {
-            const uniqueSourcesSet = new Set(
-                processedData.map(row => String(row[sourceKey])).filter(Boolean)
-            );
-            setSources(Array.from(uniqueSourcesSet).sort());
-        }
+        processedData.forEach(row => {
+            if (row[sourceKey]) uniqueSourcesSet.add(String(row[sourceKey]));
+            if (row[statusLabel]) uniqueStatusesSet.add(String(row[statusLabel]));
+            if (row[originalStatusLabel]) uniqueOriginalStatusesSet.add(String(row[originalStatusLabel]));
+        });
 
-        if (allHeaders.includes(currentStatusLabel)) {
-            const uniqueStatusesSet = new Set(
-                processedData.map(row => String(row[currentStatusLabel])).filter(Boolean)
-            );
-            setStatuses(Array.from(uniqueStatusesSet).sort());
-        }
-
-        // Optional: Populate original statuses if column exists
-        if (allHeaders.includes(currentOriginalStatusLabel)) {
-            const uniqueOriginalStatusesSet = new Set(
-                processedData.map(row => String(row[currentOriginalStatusLabel])).filter(Boolean)
-            );
-            setOriginalStatuses(Array.from(uniqueOriginalStatusesSet).sort());
-        } else {
-            setOriginalStatuses([]);
-        }
-
-        setQueryHistory([
-            { role: 'model', text: '¡Hola! Tus datos están cargados. Ahora puedes hacerme preguntas sobre ellos.' }
-        ]);
+        setSources(Array.from(uniqueSourcesSet).sort());
+        setStatuses(Array.from(uniqueStatusesSet).sort());
+        setOriginalStatuses(Array.from(uniqueOriginalStatusesSet).sort());
 
         setAppState(prev => ({
             ...prev,
@@ -743,53 +713,6 @@ export function AuditPage() {
     }, [appState.status, appState.fileToProcess]);
 
 
-    const handleQuery = useCallback(async (question: string, modelName: string) => {
-        setIsQuerying(true);
-        const userMessage: ChatMessage = { role: 'user', text: question };
-        setQueryHistory(prev => [...prev, userMessage]);
-
-        try {
-            // Datos locales actuales (limitados)
-            const MAX_ROWS = 500; // Menos filas para local ya que ahora tiene acceso a la BD
-            const dataToProcess = (appState.displayData || []).slice(0, MAX_ROWS);
-            const csvData = jsonToCSV(dataToProcess);
-
-            // Mapeamos el historial al formato que espera Gemini SDK
-            const geminiHistory = queryHistory.map(msg => ({
-                role: msg.role,
-                parts: [{ text: msg.text }]
-            })) as any[];
-
-            const toolHandler = async (name: string, args: any) => {
-                if (name === 'list_database_tables') {
-                    return [
-                        'reservas', 'reservaspalm', 'transacciones_plus',
-                        'transacciones_palm', 'notas_de_cuentas', 'factura', 'tasas_cambiarias'
-                    ];
-                }
-                if (name === 'execute_database_query') {
-                    const { table_name, select, filter, limit, order } = args;
-
-                    // Importamos dinámicamente o usamos la función de supabaseService
-                    const { executeDatabaseQuery } = await import('./services/supabaseService');
-                    return await executeDatabaseQuery(table_name, select, filter, limit, order);
-                }
-                return { error: 'Función no reconocida' };
-            };
-
-            const result = await queryAI(csvData, question, geminiHistory, toolHandler, modelName);
-            const modelMessage: ChatMessage = { role: 'model', text: result };
-            setQueryHistory(prev => [...prev, modelMessage]);
-
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Ocurrió un error desconocido.';
-            const errorModelMessage: ChatMessage = { role: 'model', text: `Lo siento, ocurrió un error: ${errorMessage}` };
-            setQueryHistory(prev => [...prev, errorModelMessage]);
-        } finally {
-            setIsQuerying(false);
-        }
-    }, [appState.displayData, queryHistory]);
-
     const handleReset = () => {
         setAppState(initialState);
         setFilters(initialFilters);
@@ -798,8 +721,6 @@ export function AuditPage() {
         setOriginalStatuses([]);
         setSummaryData(initialSummary);
         setSourceSummary([]);
-        setQueryHistory([]);
-        setIsQuerying(false);
         setVisibleColumns([]);
         setStatusLabel('Estado de la Reserva');
         setOriginalStatusLabel('Estado (Original)');
@@ -822,85 +743,61 @@ export function AuditPage() {
     useEffect(() => {
         if (appState.status !== 'display' || !appState.rawData || !appState.headers) return;
 
-        let filteredData = [...appState.rawData];
         const { source, status, originalStatus, arrivalDateStart, arrivalDateEnd, departureDateStart, departureDateEnd, reservationSearch, cancelledFilter } = filters;
-
-        // FILTRO DE CANCELADAS/NO SHOW según el modo seleccionado
+        
+        // Preparar constantes fuera del loop
         const cancelTerms = ['cancelado', 'cancelada', 'cancelled', 'no show', 'noshow'];
+        const arrivalKey = 'Fecha de llegada';
+        const departureKey = 'Salida';
+        const searchLower = reservationSearch ? reservationSearch.toLowerCase() : null;
+        
+        const startDateArr = parseDate(arrivalDateStart);
+        const endDateArr = parseDate(arrivalDateEnd);
+        const startDateDep = parseDate(departureDateStart);
+        const endDateDep = parseDate(departureDateEnd);
 
-        filteredData = filteredData.filter(row => {
+        // Optimización: UN SOLO PASO de filtrado para todas las condiciones
+        const filteredData = appState.rawData.filter(row => {
+            // 1. Filtro de Canceladas
             const rowStatus = String(row[statusLabel] || '').toLowerCase();
             const rowOriginalStatus = String(row[originalStatusLabel] || '').toLowerCase();
+            const isCancelled = cancelTerms.some(term => rowStatus.includes(term) || rowOriginalStatus.includes(term));
 
-            const isCancelled = cancelTerms.some(term =>
-                rowStatus.includes(term) || rowOriginalStatus.includes(term)
-            );
+            if (cancelledFilter === 'hidden' && isCancelled) return false;
+            if (cancelledFilter === 'only' && !isCancelled) return false;
 
-            // Según el modo del filtro:
-            if (cancelledFilter === 'hidden') {
-                return !isCancelled; // Ocultar canceladas
-            } else if (cancelledFilter === 'only') {
-                return isCancelled; // Mostrar solo canceladas
-            } else {
-                return true; // Mostrar todas
+            // 2. Filtro de Fuente
+            if (source && String(row['Fuente']) !== source) return false;
+
+            // 3. Filtros de Estado
+            if (status && String(row[statusLabel]) !== status) return false;
+            if (originalStatus && String(row[originalStatusLabel]) !== originalStatus) return false;
+
+            // 4. Búsqueda por número de reserva
+            if (searchLower) {
+                if (!String(row['Numero de la reserva'] || '').toLowerCase().includes(searchLower)) return false;
             }
-        });
 
-        if (source) {
-            filteredData = filteredData.filter(row => String(row['Fuente']) === source);
-        }
-
-        // Dynamic filtering based on active labels
-        if (status) {
-            filteredData = filteredData.filter(row => String(row[statusLabel]) === status);
-        }
-
-        if (originalStatus) {
-            filteredData = filteredData.filter(row => String(row[originalStatusLabel]) === originalStatus);
-        }
-
-        if (reservationSearch) {
-            const searchLower = reservationSearch.toLowerCase();
-            filteredData = filteredData.filter(row =>
-                String(row['Numero de la reserva'] || '').toLowerCase().includes(searchLower)
-            );
-        }
-
-        // Filtro de Rango de Fecha de Llegada
-        const arrivalKey = 'Fecha de llegada';
-        if ((arrivalDateStart || arrivalDateEnd) && appState.headers.includes(arrivalKey)) {
-            const startDate = parseDate(arrivalDateStart);
-            const endDate = parseDate(arrivalDateEnd);
-
-            filteredData = filteredData.filter(row => {
+            // 5. Rango de Fecha de Llegada
+            if (startDateArr || endDateArr) {
                 const rowDate = parseDate(row[arrivalKey]);
                 if (!rowDate) return false;
-
                 const rowTime = rowDate.getTime();
-                const startMatch = startDate ? rowTime >= startDate.getTime() : true;
-                const endMatch = endDate ? rowTime <= endDate.getTime() : true;
+                if (startDateArr && rowTime < startDateArr.getTime()) return false;
+                if (endDateArr && rowTime > endDateArr.getTime()) return false;
+            }
 
-                return startMatch && endMatch;
-            });
-        }
-
-        // Filtro de Rango de Fecha de Salida
-        const departureKey = 'Salida';
-        if ((departureDateStart || departureDateEnd) && appState.headers.includes(departureKey)) {
-            const startDate = parseDate(departureDateStart);
-            const endDate = parseDate(departureDateEnd);
-
-            filteredData = filteredData.filter(row => {
+            // 6. Rango de Fecha de Salida
+            if (startDateDep || endDateDep) {
                 const rowDate = parseDate(row[departureKey]);
                 if (!rowDate) return false;
-
                 const rowTime = rowDate.getTime();
-                const startMatch = startDate ? rowTime >= startDate.getTime() : true;
-                const endMatch = endDate ? rowTime <= endDate.getTime() : true;
+                if (startDateDep && rowTime < startDateDep.getTime()) return false;
+                if (endDateDep && rowTime > endDateDep.getTime()) return false;
+            }
 
-                return startMatch && endMatch;
-            });
-        }
+            return true;
+        });
 
         // --- Calcular resúmenes ---
         const adultsKey = 'Adultos';
@@ -1010,7 +907,7 @@ export function AuditPage() {
                         </h1>
                     </div>
                     <p className="text-lg text-brand-300">
-                        Sube, filtra y analiza tus datos para descubrir información valiosa.
+                        Sube, filtra y audita tus datos para una conciliación precisa.
                     </p>
                 </header>
 
@@ -1029,7 +926,12 @@ export function AuditPage() {
                 <div className="bg-brand-900/50 backdrop-blur-sm border border-brand-800 rounded-2xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
                     {showFileUpload && <FileUpload onFileSelect={handleFileSelect} />}
 
-                    {showLoading && <Spinner />}
+                    {showLoading && (
+                        <Spinner 
+                            current={appState.status === 'loading' ? loadingProgress.current : undefined} 
+                            total={appState.status === 'loading' ? loadingProgress.total : undefined} 
+                        />
+                    )}
 
                     {showError && <ErrorMessage message={appState.error} onReset={handleReset} />}
 
@@ -1144,7 +1046,6 @@ export function AuditPage() {
                                 originalHeaderMap={appState.originalHeaderMap}
                                 hotelSource={appState.detectedHotelType || (activeTable === 'reservaspalm' ? 'Palm' : 'Plus')}
                             />
-                            <DataQuery onQuery={handleQuery} history={queryHistory} isQuerying={isQuerying} />
                         </div>
                     )}
 

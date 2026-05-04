@@ -173,25 +173,60 @@ export interface FetchFilters {
     ilike?: Record<string, any>;
 }
 
-export const fetchDataFromSupabase = async (
+export const fetchDataFromSupabaseParallel = async (
     tableName: string,
     limit: number = 20000,
-    filters?: FetchFilters
+    filters?: FetchFilters,
+    onProgress?: (current: number, total: number) => void
 ): Promise<DataRow[]> => {
     try {
-        let allData: any[] = [];
-        let from = 0;
-        let to = 999;
-        let finished = false;
+        // 1. Obtener el conteo total primero para planificar las peticiones
+        let queryCount = supabase.from(tableName).select('*', { count: 'exact', head: true });
 
-        // Bucle para superar el límite de 1000 de PostgREST
-        while (!finished && allData.length < limit) {
+        // Aplicar filtros al conteo para saber cuántos registros reales traeremos
+        if (filters) {
+            if (filters.eq) {
+                Object.entries(filters.eq).forEach(([col, val]) => {
+                    if (val !== undefined && val !== null && val !== '') queryCount = queryCount.eq(col, val);
+                });
+            }
+            if (filters.gte) {
+                Object.entries(filters.gte).forEach(([col, val]) => {
+                    if (val) queryCount = queryCount.gte(col, val);
+                });
+            }
+            if (filters.lte) {
+                Object.entries(filters.lte).forEach(([col, val]) => {
+                    if (val) queryCount = queryCount.lte(col, val);
+                });
+            }
+            if (filters.ilike) {
+                Object.entries(filters.ilike).forEach(([col, val]) => {
+                    if (val) queryCount = queryCount.ilike(col, `%${val}%`);
+                });
+            }
+        }
+
+        const { count, error: countError } = await queryCount;
+        if (countError) throw countError;
+
+        const totalToFetch = Math.min(count || 0, limit);
+        if (totalToFetch === 0) return [];
+
+        const CHUNK_SIZE = 1000;
+        const numBatches = Math.ceil(totalToFetch / CHUNK_SIZE);
+        const batches = [];
+
+        for (let i = 0; i < numBatches; i++) {
+            const from = i * CHUNK_SIZE;
+            const to = Math.min(from + CHUNK_SIZE - 1, totalToFetch - 1);
+            
             let query = supabase
                 .from(tableName)
                 .select('*')
-                .order('id', { ascending: false }); // Priorizar lo más reciente por defecto
+                .order('id', { ascending: false })
+                .range(from, to);
 
-            // Aplicar filtros directos de Supabase si existen
             if (filters) {
                 if (filters.eq) {
                     Object.entries(filters.eq).forEach(([col, val]) => {
@@ -214,30 +249,36 @@ export const fetchDataFromSupabase = async (
                     });
                 }
             }
+            batches.push(query);
+        }
 
-            const { data, error } = await query.range(from, to);
+        // Ejecutar peticiones en grupos para no saturar el navegador (max 5 concurrentes)
+        const allData: any[] = [];
+        const CONCURRENCY_LIMIT = 5;
+        
+        for (let i = 0; i < batches.length; i += CONCURRENCY_LIMIT) {
+            const currentGroup = batches.slice(i, i + CONCURRENCY_LIMIT);
+            const results = await Promise.all(currentGroup);
+            
+            results.forEach(res => {
+                if (res.error) throw res.error;
+                if (res.data) allData.push(...res.data);
+            });
 
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                allData = [...allData, ...data];
-                if (data.length < 1000) {
-                    finished = true;
-                } else {
-                    from += 1000;
-                    to += 1000;
-                }
-            } else {
-                finished = true;
+            if (onProgress) {
+                onProgress(allData.length, totalToFetch);
             }
         }
 
         return allData as DataRow[];
     } catch (error) {
-        console.error("Failed to fetch data from Supabase:", error);
+        console.error("Failed to fetch data from Supabase in parallel:", error);
         throw error;
     }
 };
+
+// Mantener el nombre original para compatibilidad, pero usar la lógica paralela
+export const fetchDataFromSupabase = fetchDataFromSupabaseParallel;
 
 export const getExchangeRate = async (
     date: string
@@ -360,22 +401,31 @@ export const fetchTotalsByReservationNumbers = async (resNumbers: string[]): Pro
 /**
  * Obtiene todas las fuentes únicas de las tablas reservas, reservaspalm y factura.
  */
+/**
+ * Obtiene todas las fuentes únicas de las tablas reservas, reservaspalm y factura.
+ * Optimizado para evitar descargar miles de filas innecesariamente.
+ */
 export const fetchAllUniqueSources = async (): Promise<string[]> => {
     try {
-        const [plusRes, palmRes, factRes] = await Promise.all([
-            supabase.from('reservas').select('fuente'),
-            supabase.from('reservaspalm').select('fuente'),
-            supabase.from('factura').select('fuente')
+        const fetchDistinct = async (table: string) => {
+            const { data } = await supabase.from(table).select('fuente').limit(5000);
+            return data || [];
+        };
+
+        const [plusData, palmData, factData] = await Promise.all([
+            fetchDistinct('reservas'),
+            fetchDistinct('reservaspalm'),
+            fetchDistinct('factura')
         ]);
 
         const sourcesSet = new Set<string>();
-
-        [plusRes, palmRes, factRes].forEach(res => {
-            if (res.data) {
-                res.data.forEach((item: any) => {
-                    if (item.fuente) sourcesSet.add(String(item.fuente).trim());
-                });
-            }
+        [plusData, palmData, factData].forEach(data => {
+            data.forEach((item: any) => {
+                if (item.fuente) {
+                    const s = String(item.fuente).trim();
+                    if (s) sourcesSet.add(s);
+                }
+            });
         });
 
         return Array.from(sourcesSet).sort();

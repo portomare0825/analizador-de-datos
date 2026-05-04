@@ -38,8 +38,4 @@ export interface SourceSummary {
   totalAdults: number;
   totalChildren: number;
 }
-
-export interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
 }
