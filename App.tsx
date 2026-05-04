@@ -14,7 +14,8 @@ import { ClipboardDocumentCheckIcon } from './components/icons/ClipboardDocument
 import { BanknotesIcon } from './components/icons/BanknotesIcon';
 import { DatabaseMetricsPage } from './DatabaseMetricsPage';
 import { DashboardPage } from './DashboardPage';
-import { LayoutDashboard, Database as DatabaseIcon } from 'lucide-react';
+import { CxCPagosPage } from './CxCPagosPage';
+import { LayoutDashboard, Database as DatabaseIcon, CreditCard } from 'lucide-react';
 import pkg from './package.json';
 import { HotelProvider } from './contexts/HotelContext';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
@@ -22,7 +23,7 @@ import { useEffect } from 'react';
 import { useHotel } from './contexts/HotelContext';
 
 
-type View = 'dashboard' | 'audit' | 'tax-audit' | 'transactions' | 'reports' | 'metrics';
+type View = 'dashboard' | 'audit' | 'tax-audit' | 'transactions' | 'reports' | 'metrics' | 'cxc';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './LoginPage';
@@ -95,6 +96,7 @@ function AppContent() {
         { id: 'audit', label: 'Auditoría General', icon: HomeIcon },
         { id: 'tax-audit', label: 'Auditoría de Tasas', icon: ClipboardDocumentCheckIcon },
         { id: 'transactions', label: 'Transacciones', icon: BanknotesIcon },
+        { id: 'cxc', label: 'Pagos CxC', icon: CreditCard },
         { id: 'reports', label: 'Reportes Históricos', icon: ChartBarIcon },
         { id: 'metrics', label: 'Estado de la BD', icon: DatabaseIcon },
     ];
@@ -109,6 +111,8 @@ function AppContent() {
                 return <TaxAuditPage />;
             case 'transactions':
                 return <TransactionsPage />;
+            case 'cxc':
+                return <CxCPagosPage />;
             case 'reports':
                 return <ReportsPage />;
             case 'metrics':
