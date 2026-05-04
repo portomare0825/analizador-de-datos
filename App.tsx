@@ -14,11 +14,12 @@ import { ClipboardDocumentCheckIcon } from './components/icons/ClipboardDocument
 import { BanknotesIcon } from './components/icons/BanknotesIcon';
 import { DatabaseMetricsPage } from './DatabaseMetricsPage';
 import { DashboardPage } from './DashboardPage';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Database as DatabaseIcon } from 'lucide-react';
 import pkg from './package.json';
 import { HotelProvider } from './contexts/HotelContext';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 import { useEffect } from 'react';
+import { useHotel } from './contexts/HotelContext';
 
 
 type View = 'dashboard' | 'audit' | 'tax-audit' | 'transactions' | 'reports' | 'metrics';
@@ -30,13 +31,16 @@ import { CustomModal } from './components/CustomModal';
 export default function App() {
     return (
         <AuthProvider>
-            <AppContent />
+            <HotelProvider>
+                <AppContent />
+            </HotelProvider>
         </AuthProvider>
     );
 }
 
 function AppContent() {
     const { session, loading, signOut } = useAuth();
+    const { hotel, setHotel } = useHotel();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -117,8 +121,7 @@ function AppContent() {
     const appVersion = `v${pkg.version}`;
 
     return (
-        <HotelProvider>
-            <div className="flex flex-col h-screen bg-brand-950 text-brand-50 font-sans overflow-hidden">
+        <div className="flex flex-col h-screen bg-brand-950 text-brand-50 font-sans overflow-hidden">
                 
                 {/* Banner de Actualización Automática */}
                 <AutoUpdateBanner 
@@ -145,6 +148,32 @@ function AppContent() {
                                 LD' Analytics
                             </span>
                         )}
+                    </div>
+
+                    {/* Selector de Hotel */}
+                    <div className={`px-2 py-4 border-b border-brand-800 ${isCollapsed ? 'flex justify-center' : ''}`}>
+                        <div className={`bg-brand-950/50 rounded-xl p-1 flex w-full ${isCollapsed ? 'flex-col gap-1' : 'flex-row gap-1'}`}>
+                            <button
+                                onClick={() => setHotel('plus')}
+                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                                    hotel === 'plus' 
+                                    ? 'bg-brand-800 text-white shadow-inner' 
+                                    : 'text-brand-500 hover:text-brand-300'
+                                }`}
+                            >
+                                {isCollapsed ? 'P+' : 'LD Plus'}
+                            </button>
+                            <button
+                                onClick={() => setHotel('palm')}
+                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                                    hotel === 'palm' 
+                                    ? 'bg-brand-800 text-white shadow-inner' 
+                                    : 'text-brand-500 hover:text-brand-300'
+                                }`}
+                            >
+                                {isCollapsed ? 'Pa' : 'LD Palm'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Navigation Items - Padding reducido */}
@@ -285,10 +314,9 @@ function AppContent() {
                              <p>&copy; {new Date().getFullYear()} Auditoria de Ingresos, LD' Hoteles. Todos los derechos reservados.</p>
                              <p className="text-xs opacity-60 font-mono">{appVersion}</p>
                          </footer>
-                     </div>
-                 </main>
-             </div>
-         </div>
+                    </div>
+                </main>
+            </div>
 
             {/* Modal de Cierre de Sesión */}
             <CustomModal
@@ -300,6 +328,6 @@ function AppContent() {
                 confirmLabel="Sí, Salir"
                 cancelLabel="Cancelar"
             />
-        </HotelProvider>
+        </div>
     );
 }

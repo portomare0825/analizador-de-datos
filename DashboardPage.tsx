@@ -43,100 +43,181 @@ export function DashboardPage() {
         averageDailyRate: 0,
         occupancy: 0
     });
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [chartData, setChartData] = useState<any[]>([]);
     const [sourceData, setSourceData] = useState<any[]>([]);
     const [criticalReservations, setCriticalReservations] = useState<any[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+    const months = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const tableName = hotel === 'plus' ? 'reservas' : 'reservaspalm';
-            // Fetch a larger sample for the dashboard
-            const rawData = await fetchDataFromSupabase(tableName, 5000);
+            // Fetch a larger sample to ensure we have enough data for the selected period
+            const rawData = await fetchDataFromSupabase(tableName, 10000);
             const { data: processed } = processDatabaseData(rawData);
             
             setData(processed);
-            calculateStats(processed);
+            calculateStats(processed, selectedMonth, selectedYear);
         } catch (error) {
             console.error("Error loading dashboard data:", error);
+            setError("No se pudieron cargar los datos de Supabase. Verifique su conexión.");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [hotel, selectedMonth, selectedYear]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
-    const calculateStats = (processedData: any[]) => {
-        let totalRev = 0;
-        let totalPaid = 0;
-        let totalPending = 0;
-        let cancelledCount = 0;
-        let confirmedCount = 0;
-        
-        const sourcesMap: Record<string, number> = {};
-        const revenueByDate: Record<string, number> = {};
+    const calculateStats = (processedData: any[], month: number, year: number) => {
+        try {
+            let totalRev = 0;
+            let totalPaid = 0;
+            let totalPending = 0;
+            let cancelledCount = 0;
+            let confirmedCount = 0;
+            
+            const sourcesMap: Record<string, number> = {};
+            const revenueByDate: Record<string, number> = {};
 
-        processedData.forEach(row => {
-            const total = parseFloat(row['Total General']) || 0;
-            const paid = parseFloat(row['Monto Pagado']) || 0;
-            const pending = parseFloat(row['Saldo Pendiente']) || 0;
-            const status = (row['Estado de la Reserva'] || '').toLowerCase();
-            const source = row['Fuente'] || 'Desconocido';
-            const date = row['Fecha de llegada'];
-
-            if (status.includes('cancel')) {
-                cancelledCount++;
-            } else {
-                confirmedCount++;
-                totalRev += total;
-                totalPaid += paid;
-                totalPending += pending;
-
-                // Group by source
-                sourcesMap[source] = (sourcesMap[source] || 0) + total;
-
-                // Group by date for chart
-                if (date instanceof Date) {
-                    const dateStr = date.toISOString().split('T')[0];
-                    revenueByDate[dateStr] = (revenueByDate[dateStr] || 0) + total;
-                }
+            if (!processedData || processedData.length === 0) {
+                setStats(initialStats);
+                setChartData([]);
+                setSourceData([]);
+                setCriticalReservations([]);
+                return;
             }
-        });
 
-        // Format chart data
-        const sortedDates = Object.keys(revenueByDate).sort();
-        const formattedChartData = sortedDates.slice(-15).map(date => ({
-            name: new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
-            revenue: revenueByDate[date]
-        }));
+            // Filter data for selected month and year
+            const filteredData = processedData.filter(row => {
+                const date = row['Fecha de llegada'];
+                if (date instanceof Date) {
+                    return date.getMonth() === month && date.getFullYear() === year;
+                }
+                return false;
+            });
 
-        // Format source data
-        const formattedSourceData = Object.entries(sourcesMap)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            if (filteredData.length === 0) {
+                setStats(initialStats);
+                setChartData([]);
+                setSourceData([]);
+                setCriticalReservations([]);
+                return;
+            }
 
-        // Find critical reservations (High pending balance)
-        const critical = processedData
-            .filter(r => !r['Estado de la Reserva']?.toLowerCase().includes('cancel'))
-            .sort((a, b) => (parseFloat(b['Saldo Pendiente']) || 0) - (parseFloat(a['Saldo Pendiente']) || 0))
-            .slice(0, 5);
+            filteredData.forEach(row => {
+                const total = parseFloat(row['Total General']) || 0;
+                const paid = parseFloat(row['Monto Pagado']) || 0;
+                const pending = parseFloat(row['Saldo Pendiente']) || 0;
+                const status = (row['Estado de la Reserva'] || '').toString().toLowerCase();
+                const source = row['Fuente'] || 'Desconocido';
+                const date = row['Fecha de llegada'];
 
-        setStats({
-            totalRevenue: totalRev,
-            paidAmount: totalPaid,
-            pendingBalance: totalPending,
-            cancellationRate: (cancelledCount / (cancelledCount + confirmedCount)) * 100 || 0,
-            averageDailyRate: totalRev / confirmedCount || 0,
-            occupancy: 0 // Would need rooms availability
-        });
+                if (status.includes('cancel')) {
+                    cancelledCount++;
+                } else {
+                    confirmedCount++;
+                    totalRev += total;
+                    totalPaid += paid;
+                    totalPending += pending;
 
-        setChartData(formattedChartData);
-        setSourceData(formattedSourceData);
-        setCriticalReservations(critical);
+                    // Group by source
+                    sourcesMap[source] = (sourcesMap[source] || 0) + total;
+
+                    // Group by date for chart
+                    if (date instanceof Date) {
+                        const dateStr = date.toISOString().split('T')[0];
+                        revenueByDate[dateStr] = (revenueByDate[dateStr] || 0) + total;
+                    }
+                }
+            });
+
+            // Format chart data
+            // Calculate dates for the NEXT 15 days from TODAY
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const next15Days: string[] = [];
+            for (let i = 0; i < 15; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                next15Days.push(d.toISOString().split('T')[0]);
+            }
+
+            // Create chart data for these specific 15 days (Future projections)
+            const formattedChartData = next15Days.map(dateStr => {
+                return {
+                    name: new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    revenue: revenueByDate[dateStr] || 0
+                };
+            });
+
+            // Format source data
+            const formattedSourceData = Object.entries(sourcesMap)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 5);
+
+            // Find critical reservations in the selected month
+            const critical = [...filteredData]
+                .filter(r => {
+                    const status = (r['Estado de la Reserva'] || '').toString().toLowerCase();
+                    return !status.includes('cancel');
+                })
+                .sort((a, b) => (parseFloat(b['Saldo Pendiente']) || 0) - (parseFloat(a['Saldo Pendiente']) || 0))
+                .slice(0, 5);
+
+            setStats({
+                totalRevenue: totalRev,
+                paidAmount: totalPaid,
+                pendingBalance: totalPending,
+                cancellationRate: (cancelledCount / (cancelledCount + confirmedCount)) * 100 || 0,
+                averageDailyRate: totalRev / confirmedCount || 0,
+                occupancy: 0 
+            });
+
+            setChartData(formattedChartData);
+            setSourceData(formattedSourceData);
+            setCriticalReservations(critical);
+        } catch (err) {
+            console.error("Error calculating stats:", err);
+        }
     };
+
+    const initialStats = {
+        totalRevenue: 0,
+        paidAmount: 0,
+        pendingBalance: 0,
+        cancellationRate: 0,
+        averageDailyRate: 0,
+        occupancy: 0
+    };
+
+    if (error) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center bg-brand-950 p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
+                <h2 className="text-xl font-bold mb-2">Error al cargar datos</h2>
+                <p className="text-brand-400 mb-6">{error}</p>
+                <button 
+                    onClick={loadData}
+                    className="px-6 py-2 bg-brand-800 hover:bg-brand-700 rounded-xl transition-all border border-brand-700"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
 
     if (loading) {
         return <div className="h-full flex items-center justify-center bg-brand-950">
@@ -144,26 +225,55 @@ export function DashboardPage() {
         </div>;
     }
 
-    const formatCurrency = (val: number) => 
-        new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(val);
+    const formatCurrency = (val: number) => {
+        if (isNaN(val)) return "$0.00";
+        try {
+            return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(val);
+        } catch (e) {
+            return `$${val.toFixed(2)}`;
+        }
+    };
 
     return (
         <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-brand-400 bg-clip-text text-transparent">
-                        Panel de Resumen
+                        Panel de Resumen - LD {hotel === 'plus' ? 'Plus' : 'Palm'}
                     </h1>
                     <p className="text-brand-400 mt-1">Vista general del desempeño y auditoría de ingresos</p>
                 </div>
-                <button 
-                    onClick={loadData}
-                    className="flex items-center gap-2 px-4 py-2 bg-brand-800 hover:bg-brand-700 rounded-xl transition-all border border-brand-700 shadow-lg"
-                >
-                    <Calendar className="w-4 h-4 text-brand-400" />
-                    <span>Actualizar Datos</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <div className="flex bg-brand-900/50 border border-brand-800 rounded-xl p-1">
+                        <select 
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            className="bg-transparent text-sm font-semibold px-3 py-1 outline-none border-none focus:ring-0 cursor-pointer"
+                        >
+                            {months.map((m, i) => (
+                                <option key={m} value={i} className="bg-brand-900">{m}</option>
+                            ))}
+                        </select>
+                        <div className="w-px bg-brand-800 my-1"></div>
+                        <select 
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            className="bg-transparent text-sm font-semibold px-3 py-1 outline-none border-none focus:ring-0 cursor-pointer"
+                        >
+                            {years.map(y => (
+                                <option key={y} value={y} className="bg-brand-900">{y}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <button 
+                        onClick={loadData}
+                        className="flex items-center gap-2 px-4 py-2 bg-brand-900/50 hover:bg-brand-800 border border-brand-800 rounded-xl transition-all duration-300 group shadow-lg"
+                    >
+                        <Calendar className="w-4 h-4 text-brand-400 group-hover:rotate-12 transition-transform" />
+                        <span className="text-sm font-semibold">Actualizar</span>
+                    </button>
+                </div>
             </div>
 
             {/* KPI Grid */}
@@ -211,7 +321,7 @@ export function DashboardPage() {
                     </div>
                     <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-emerald-400" />
-                        Tendencia de Ingresos (Últimos 15 días)
+                        Proyección de Ingresos (Próximos 15 días)
                     </h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -347,7 +457,7 @@ function KPICard({ title, value, icon, trend, trendUp, color }: any) {
     };
 
     return (
-        <div className={`bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-xl group hover:border-brand-700 transition-all duration-300`}>
+        <div className={`bg-brand-900/40 backdrop-blur-xl border p-6 rounded-3xl shadow-xl group hover:border-brand-700 transition-all duration-300 ${colorClasses[color] || 'border-brand-800'}`}>
             <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-brand-800 rounded-2xl group-hover:scale-110 transition-transform duration-300">
                     {icon}

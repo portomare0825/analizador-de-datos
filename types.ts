@@ -38,4 +38,3 @@ export interface SourceSummary {
   totalAdults: number;
   totalChildren: number;
 }
-}

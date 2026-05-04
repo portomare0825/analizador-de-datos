@@ -20,6 +20,52 @@ export const DESIRED_COLUMNS_CONFIG = [
     { key: 'Region', keywords: ['provincia', 'region', 'state'] },
 ];
 
+/**
+ * Robustly parses a date input from various formats into a JS Date object normalized to local midnight.
+ */
+export const parseDate = (dateInput: any): Date | null => {
+    if (!dateInput) return null;
+
+    if (dateInput instanceof Date) {
+        if (isNaN(dateInput.getTime())) return null;
+        dateInput.setHours(0, 0, 0, 0);
+        return dateInput;
+    }
+
+    if (typeof dateInput === 'number') {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        const jsDate = new Date(excelEpoch.getTime() + dateInput * 86400000);
+        if (isNaN(jsDate.getTime())) return null;
+        jsDate.setHours(0, 0, 0, 0);
+        return jsDate;
+    }
+
+    if (typeof dateInput === 'string') {
+        let date: Date | null = null;
+        let parts = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (parts) {
+            date = new Date(parseInt(parts[1], 10), parseInt(parts[2], 10) - 1, parseInt(parts[3], 10));
+        } else {
+            parts = dateInput.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+            if (parts) {
+                date = new Date(parseInt(parts[3], 10), parseInt(parts[2], 10) - 1, parseInt(parts[1], 10));
+            } else {
+                const tempDate = new Date(dateInput);
+                if (!isNaN(tempDate.getTime())) {
+                    date = tempDate;
+                }
+            }
+        }
+
+        if (date && !isNaN(date.getTime())) {
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+    }
+
+    return null;
+};
+
 export const findKey = (headers: string[], keywords: string[], ignoredHeaders?: Set<string>): string | null => {
     if (!headers) return null;
     for (const keyword of keywords) {
@@ -52,7 +98,15 @@ export const processDatabaseData = (dbData: any[]) => {
     const processedData = dbData.map(row => {
         const newRow: DataRow = { ...row };
         Object.entries(appKeyToDbKeyMap).forEach(([appKey, dbKey]) => {
-            newRow[appKey] = row[dbKey];
+            let val = row[dbKey];
+            
+            // Date parsing
+            if (typeof val === 'string' && (appKey.toLowerCase().includes('fecha') || appKey.toLowerCase().includes('salida') || appKey.toLowerCase().includes('llegada'))) {
+                const parsed = parseDate(val);
+                if (parsed) val = parsed;
+            }
+            
+            newRow[appKey] = val;
         });
         return newRow;
     });
