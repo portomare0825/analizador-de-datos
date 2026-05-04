@@ -4,8 +4,8 @@ import { DataRow } from '../types';
 export const DESIRED_COLUMNS_CONFIG = [
     { key: 'Nombre', keywords: ['nombre', 'cliente', 'huesped', 'guest'] },
     { key: 'Numero de la reserva', keywords: ['reserva', 'booking id', 'reservation'] },
-    { key: 'Adultos', keywords: ['adultos', 'adults'] },
-    { key: 'Niños', keywords: ['niños', 'nonos', 'children', 'kids'] },
+    { key: 'Adultos', keywords: ['adultos', 'adult', 'adults', 'pax_adulto', 'pax_a'] },
+    { key: 'Niños', keywords: ['niños', 'ninos', 'children', 'kids', 'menores', 'infantes', 'pax_nino', 'pax_n'] },
     { key: 'Total Hab.', keywords: ['total de la habitacion', 'total de la habitación', 'total habitacion', 'total habitación', 'monto habitacion', 'monto habitación', 'monto hab', 'total hab', 'importe habitacion', 'rate', 'room total'] },
     { key: 'Numero de habitacion', keywords: ['habitacion', 'habitación', 'room', 'no. hab'] },
     { key: 'Monto Pagado', keywords: ['pagado', 'monto pagado', 'paid'] },

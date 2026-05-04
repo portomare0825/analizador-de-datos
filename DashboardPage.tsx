@@ -12,7 +12,8 @@ import {
     Pie, 
     Cell,
     BarChart,
-    Bar
+    Bar,
+    Legend
 } from 'recharts';
 import { 
     TrendingUp, 
@@ -46,8 +47,16 @@ export function DashboardPage() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [chartData, setChartData] = useState<any[]>([]);
+    const [paxData, setPaxData] = useState<any[]>([]);
     const [sourceData, setSourceData] = useState<any[]>([]);
     const [criticalReservations, setCriticalReservations] = useState<any[]>([]);
+    const [detailedStats, setDetailedStats] = useState<any>({ cancelledBySource: [], pendingBySource: [] });
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, data: any[], type: 'currency' | 'count' }>({
+        isOpen: false,
+        title: '',
+        data: [],
+        type: 'currency'
+    });
     const [error, setError] = useState<string | null>(null);
 
     const months = [
@@ -88,11 +97,16 @@ export function DashboardPage() {
             let confirmedCount = 0;
             
             const sourcesMap: Record<string, number> = {};
+            const cancelledBySource: Record<string, number> = {};
+            const pendingBySource: Record<string, number> = {};
             const revenueByDate: Record<string, number> = {};
+            const adultsByDate: Record<string, number> = {};
+            const kidsByDate: Record<string, number> = {};
 
             if (!processedData || processedData.length === 0) {
                 setStats(initialStats);
                 setChartData([]);
+                setPaxData([]);
                 setSourceData([]);
                 setCriticalReservations([]);
                 return;
@@ -119,12 +133,15 @@ export function DashboardPage() {
                 const total = parseFloat(row['Total General']) || 0;
                 const paid = parseFloat(row['Monto Pagado']) || 0;
                 const pending = parseFloat(row['Saldo Pendiente']) || 0;
+                const adults = parseInt(row['Adultos']) || 0;
+                const kids = parseInt(row['Niños']) || 0;
                 const status = (row['Estado de la Reserva'] || '').toString().toLowerCase();
                 const source = row['Fuente'] || 'Desconocido';
                 const date = row['Fecha de llegada'];
 
                 if (status.includes('cancel')) {
                     cancelledCount++;
+                    cancelledBySource[source] = (cancelledBySource[source] || 0) + 1;
                 } else {
                     confirmedCount++;
                     totalRev += total;
@@ -133,11 +150,16 @@ export function DashboardPage() {
 
                     // Group by source
                     sourcesMap[source] = (sourcesMap[source] || 0) + total;
+                    if (pending > 0) {
+                        pendingBySource[source] = (pendingBySource[source] || 0) + pending;
+                    }
 
-                    // Group by date for chart
+                    // Group by date
                     if (date instanceof Date) {
                         const dateStr = date.toISOString().split('T')[0];
                         revenueByDate[dateStr] = (revenueByDate[dateStr] || 0) + total;
+                        adultsByDate[dateStr] = (adultsByDate[dateStr] || 0) + adults;
+                        kidsByDate[dateStr] = (kidsByDate[dateStr] || 0) + kids;
                     }
                 }
             });
@@ -156,9 +178,21 @@ export function DashboardPage() {
 
             // Create chart data for these specific 15 days (Future projections)
             const formattedChartData = next15Days.map(dateStr => {
+                const dateObj = new Date(dateStr + 'T12:00:00');
                 return {
-                    name: new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    name: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
                     revenue: revenueByDate[dateStr] || 0
+                };
+            });
+
+            // Create pax data for the same 15 days
+            const formattedPaxData = next15Days.map(dateStr => {
+                const dateObj = new Date(dateStr + 'T12:00:00');
+                return {
+                    name: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    adults: adultsByDate[dateStr] || 0,
+                    kids: kidsByDate[dateStr] || 0,
+                    total: (adultsByDate[dateStr] || 0) + (kidsByDate[dateStr] || 0)
                 };
             });
 
@@ -186,9 +220,15 @@ export function DashboardPage() {
                 occupancy: 0 
             });
 
-            setChartData(formattedChartData);
-            setSourceData(formattedSourceData);
             setCriticalReservations(critical);
+            setChartData(formattedChartData);
+            setPaxData(formattedPaxData);
+            setSourceData(formattedSourceData);
+
+            setDetailedStats({
+                cancelledBySource: Object.entries(cancelledBySource).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+                pendingBySource: Object.entries(pendingBySource).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+            });
         } catch (err) {
             console.error("Error calculating stats:", err);
         }
@@ -301,6 +341,12 @@ export function DashboardPage() {
                     trend="-5%"
                     trendUp={false}
                     color="amber"
+                    onClick={() => setModalConfig({
+                        isOpen: true,
+                        title: 'Resumen de Saldo Pendiente por Fuente',
+                        data: detailedStats.pendingBySource,
+                        type: 'currency'
+                    })}
                 />
                 <KPICard 
                     title="Tasa de Cancelación" 
@@ -309,6 +355,12 @@ export function DashboardPage() {
                     trend="+2%"
                     trendUp={false}
                     color="rose"
+                    onClick={() => setModalConfig({
+                        isOpen: true,
+                        title: 'Resumen de Cancelaciones por Fuente',
+                        data: detailedStats.cancelledBySource,
+                        type: 'count'
+                    })}
                 />
             </div>
 
@@ -365,20 +417,20 @@ export function DashboardPage() {
                 </div>
 
                 {/* Sources Pie Chart */}
-                <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl">
+                <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl flex flex-col">
                     <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                         <Hotel className="w-5 h-5 text-blue-400" />
                         Ingresos por Fuente
                     </h3>
-                    <div className="h-[250px] w-full">
+                    <div className="aspect-square w-full max-h-[500px] mx-auto flex-grow relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={sourceData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
+                                    innerRadius="70%"
+                                    outerRadius="100%"
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
@@ -407,13 +459,60 @@ export function DashboardPage() {
                 </div>
             </div>
 
+            {/* Pax Projection Chart */}
+            <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl mb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Users size={120} />
+                </div>
+                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-400" />
+                    Proyección de Huéspedes (Pax entrando por día)
+                </h3>
+                <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={paxData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                dy={10}
+                            />
+                            <YAxis 
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                            />
+                            <Tooltip 
+                                contentStyle={{ 
+                                    backgroundColor: '#0f172a', 
+                                    border: '1px solid #1e293b',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                                }}
+                                itemStyle={{ fontSize: '13px' }}
+                            />
+                            <Legend 
+                                verticalAlign="top" 
+                                align="right" 
+                                iconType="circle"
+                                wrapperStyle={{ paddingBottom: '20px' }}
+                            />
+                            <Bar dataKey="adults" name="Adultos" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="kids" name="Niños" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
             {/* Critical Reservations Table */}
             <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl">
                 <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-rose-400" />
                     Saldos Pendientes Críticos
                 </h3>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="text-brand-400 text-xs uppercase tracking-wider border-b border-brand-800">
@@ -444,11 +543,54 @@ export function DashboardPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Detail Modal */}
+            {modalConfig.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-brand-900 border border-brand-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-brand-800 flex justify-between items-center bg-brand-950/50">
+                            <h3 className="text-xl font-bold">{modalConfig.title}</h3>
+                            <button 
+                                onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                                className="p-2 hover:bg-brand-800 rounded-xl transition-colors"
+                            >
+                                <AlertCircle className="w-6 h-6 rotate-45 text-brand-400" />
+                            </button>
+                        </div>
+                        <div className="p-6 max-h-[60vh] overflow-y-auto no-scrollbar">
+                            {modalConfig.data && modalConfig.data.length > 0 ? (
+                                <div className="space-y-4">
+                                    {modalConfig.data.map((item, i) => (
+                                        <div key={i} className="flex justify-between items-center p-4 bg-brand-800/30 rounded-2xl border border-brand-800/50 hover:bg-brand-800/50 transition-colors">
+                                            <span className="font-semibold text-brand-200">{item.name}</span>
+                                            <span className={`font-mono font-bold ${modalConfig.type === 'currency' ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                {modalConfig.type === 'currency' ? formatCurrency(item.value) : `${item.value} reservas`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-brand-500 italic">
+                                    No hay datos disponibles para este periodo.
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 bg-brand-950/50 border-t border-brand-800">
+                            <button 
+                                onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                                className="w-full py-3 bg-brand-800 hover:bg-brand-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98]"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-function KPICard({ title, value, icon, trend, trendUp, color }: any) {
+function KPICard({ title, value, icon, trend, trendUp, color, onClick }: any) {
     const colorClasses: any = {
         emerald: 'from-emerald-500/20 to-emerald-500/5 text-emerald-400 border-emerald-500/20',
         blue: 'from-blue-500/20 to-blue-500/5 text-blue-400 border-blue-500/20',
@@ -457,7 +599,10 @@ function KPICard({ title, value, icon, trend, trendUp, color }: any) {
     };
 
     return (
-        <div className={`bg-brand-900/40 backdrop-blur-xl border p-6 rounded-3xl shadow-xl group hover:border-brand-700 transition-all duration-300 ${colorClasses[color] || 'border-brand-800'}`}>
+        <div 
+            onClick={onClick}
+            className={`bg-brand-900/40 backdrop-blur-xl border p-6 rounded-3xl shadow-xl group hover:border-brand-700 transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''} ${colorClasses[color] || 'border-brand-800'}`}
+        >
             <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-brand-800 rounded-2xl group-hover:scale-110 transition-transform duration-300">
                     {icon}
