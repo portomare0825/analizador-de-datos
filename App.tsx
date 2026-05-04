@@ -12,15 +12,16 @@ import { ChevronLeftIcon } from './components/icons/ChevronLeftIcon';
 import { ChevronRightIcon } from './components/icons/ChevronRightIcon';
 import { ClipboardDocumentCheckIcon } from './components/icons/ClipboardDocumentCheckIcon';
 import { BanknotesIcon } from './components/icons/BanknotesIcon';
-import { DatabaseIcon } from './components/icons/DatabaseIcon';
 import { DatabaseMetricsPage } from './DatabaseMetricsPage';
+import { DashboardPage } from './DashboardPage';
+import { LayoutDashboard } from 'lucide-react';
 import pkg from './package.json';
 import { HotelProvider } from './contexts/HotelContext';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 import { useEffect } from 'react';
 
 
-type View = 'audit' | 'tax-audit' | 'transactions' | 'reports' | 'metrics';
+type View = 'dashboard' | 'audit' | 'tax-audit' | 'transactions' | 'reports' | 'metrics';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './LoginPage';
@@ -36,7 +37,7 @@ export default function App() {
 
 function AppContent() {
     const { session, loading, signOut } = useAuth();
-    const [currentView, setCurrentView] = useState<View>('audit');
+    const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -86,6 +87,7 @@ function AppContent() {
     }
 
     const menuItems = [
+        { id: 'dashboard', label: 'Panel de Resumen', icon: LayoutDashboard },
         { id: 'audit', label: 'Auditoría General', icon: HomeIcon },
         { id: 'tax-audit', label: 'Auditoría de Tasas', icon: ClipboardDocumentCheckIcon },
         { id: 'transactions', label: 'Transacciones', icon: BanknotesIcon },
@@ -95,6 +97,8 @@ function AppContent() {
 
     const renderContent = () => {
         switch (currentView) {
+            case 'dashboard':
+                return <DashboardPage />;
             case 'audit':
                 return <AuditPage />;
             case 'tax-audit':
@@ -106,7 +110,7 @@ function AppContent() {
             case 'metrics':
                 return <DatabaseMetricsPage />;
             default:
-                return <AuditPage />;
+                return <DashboardPage />;
         }
     };
 

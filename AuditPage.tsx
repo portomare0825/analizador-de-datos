@@ -8,6 +8,7 @@ import { parseFileToJSON } from './utils/fileParser';
 import { fetchDataFromSupabase } from './services/supabaseService';
 import type { Filters, DataRow, SummaryData, SourceSummary } from './types';
 import { FilterBar } from './components/FilterBar';
+import { processDatabaseData } from './utils/dataProcessor';
 import { DataTable } from './components/DataTable';
 import { SummaryDisplay } from './components/SummaryDisplay';
 import { SourceSummaryDisplay } from './components/SourceSummaryDisplay';
@@ -67,50 +68,7 @@ const initialSummary: SummaryData = {
     totalRooms: 0,
 };
 
-// Columnas deseadas y palabras clave para encontrarlas en el archivo original. La prioridad la da el orden en el array 'keywords'.
-const DESIRED_COLUMNS_CONFIG = [
-    { key: 'Nombre', keywords: ['nombre', 'cliente', 'huesped', 'guest'] },
-    { key: 'Numero de la reserva', keywords: ['reserva', 'booking id', 'reservation'] },
-    { key: 'Adultos', keywords: ['adultos', 'adults'] },
-    { key: 'Niños', keywords: ['niños', 'nonos', 'children', 'kids'] },
-    // Se prioriza 'Total Hab.' y se añaden acentos para evitar conflictos de nombres
-    { key: 'Total Hab.', keywords: ['total de la habitacion', 'total de la habitación', 'total habitacion', 'total habitación', 'monto habitacion', 'monto habitación', 'monto hab', 'total hab', 'importe habitacion', 'rate', 'room total'] },
-    { key: 'Numero de habitacion', keywords: ['habitacion', 'habitación', 'room', 'no. hab'] },
-    { key: 'Monto Pagado', keywords: ['pagado', 'monto pagado', 'paid'] },
-    { key: 'Fecha de llegada', keywords: ['llegada', 'arrival', 'inicio', 'check in', 'checkin'] },
-    { key: 'Salida', keywords: ['salida', 'departure', 'fin', 'check out', 'checkout'] },
-    { key: 'Noches', keywords: ['noches', 'nights'] },
-    { key: 'Total General', keywords: ['total general', 'gran total', 'grand total', 'total'] },
-    { key: 'Deposito', keywords: ['deposito', 'deposit', 'anticipo'] },
-    { key: 'Saldo Pendiente', keywords: ['pendiente', 'saldo', 'balance', 'due'] },
-    { key: 'Fuente', keywords: ['fuente', 'source', 'canal', 'channel'] },
-    // UPDATE: Added 'estado' to keywords to fix the filter mapping issue
-    { key: 'Estado de la Reserva', keywords: ['estado_1', 'status_1', 'estatus_1', 'estado_de_la_reserva', 'status', 'estatus', 'estado'] },
-    // UPDATE: Removed 'estado' from Region to allow 'Estado de la Reserva' to capture it
-    { key: 'Region', keywords: ['provincia', 'region', 'state'] },
-];
-
-/**
- * Finds the best matching header from a list of headers based on a prioritized list of keywords.
- * It respects the order of keywords in the array for priority.
- * Now accepts a Set of ignored headers to avoid shadowing.
- */
-const findKey = (headers: string[], keywords: string[], ignoredHeaders?: Set<string>): string | null => {
-    if (!headers) return null;
-
-    // Iterate in the provided order of priority.
-    for (const keyword of keywords) {
-        for (const header of headers) {
-            if (ignoredHeaders && ignoredHeaders.has(header)) continue;
-
-            if (header.toLowerCase().includes(keyword.toLowerCase())) {
-                return header;
-            }
-        }
-    }
-
-    return null;
-};
+// Logic moved to utils/dataProcessor.ts
 
 /**
  * Intelligently finds the reservation status column by analyzing cell content.
@@ -339,135 +297,7 @@ const parseDate = (dateInput: any): Date | null => {
     return null;
 };
 
-// Helper to normalize string to snake_case (used to match DB columns)
-const normalizeKey = (key: string): string => {
-    return key
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s_]/g, '')
-        .trim()
-        .replace(/\s+/g, '_');
-};
-
-// Maps database snake_case columns back to the App's Title Case columns
-const processDatabaseData = (dbData: DataRow[]): { data: DataRow[], allHeaders: string[], defaultVisibleHeaders: string[], originalHeaderMap: Record<string, string> } => {
-    // Create a map of normalized keys (db columns) to Desired App Keys
-    // e.g. 'numero_de_la_reserva' -> 'Numero de la reserva'
-    const dbKeyToAppKeyMap: Record<string, string> = {};
-    // Create reverse map for display: App Key -> Original DB Key
-    const appKeyToDbKeyMap: Record<string, string> = {};
-
-    // Identify all available keys in the database response (scan first 50 rows to be safe)
-    const dbKeys = new Set<string>();
-    const sampleSize = Math.min(dbData.length, 50);
-    for (let i = 0; i < sampleSize; i++) {
-        Object.keys(dbData[i]).forEach(k => dbKeys.add(k));
-    }
-    const allDbKeys = Array.from(dbKeys);
-
-    DESIRED_COLUMNS_CONFIG.forEach(config => {
-        // 1. Try matching by Exact Normalized Key
-        const normalized = normalizeKey(config.key);
-        if (allDbKeys.includes(normalized)) {
-            dbKeyToAppKeyMap[normalized] = config.key;
-            appKeyToDbKeyMap[config.key] = normalized;
-        }
-
-        // 2. Try matching by Keywords (Robustness similar to file import)
-        config.keywords.forEach(keyword => {
-            const normalizedKeyword = normalizeKey(keyword);
-            const matchedDbKey = allDbKeys.find(dbKey => normalizeKey(dbKey) === normalizedKeyword);
-
-            if (matchedDbKey) {
-                dbKeyToAppKeyMap[matchedDbKey] = config.key;
-                // Prefer exact match for reverse map, but fallback to keyword match
-                if (!appKeyToDbKeyMap[config.key]) {
-                    appKeyToDbKeyMap[config.key] = matchedDbKey;
-                }
-            }
-        });
-    });
-
-    // Add manual overrides for specific DB column names requested by user.
-    // Ensure both potential DB columns map to 'Estado de la Reserva'.
-    // The data processing loop will handle merging if both exist.
-    dbKeyToAppKeyMap['estado_de_la_reserva'] = 'Estado de la Reserva';
-    dbKeyToAppKeyMap['estado_1'] = 'Estado de la Reserva';
-
-    // Reverse map preference: Assume 'estado_de_la_reserva' is the "canonical" original name if it exists,
-    // otherwise it will default to whatever was found first.
-    appKeyToDbKeyMap['Estado de la Reserva'] = 'estado_de_la_reserva';
-
-
-    // Collect all headers found in the DB data
-    const foundDbHeaders = new Set<string>();
-    if (dbData.length > 0) {
-        Object.keys(dbData[0]).forEach(k => foundDbHeaders.add(k));
-    }
-
-    // Process data
-    const processedData = dbData.map(row => {
-        const newRow: DataRow = {};
-        Object.keys(row).forEach(dbKey => {
-            const appKey = dbKeyToAppKeyMap[dbKey] || dbKey; // Use mapped name or fallback to original
-
-            let val = row[dbKey];
-            // Attempt to parse dates if the key suggests it's a date field
-            if (typeof val === 'string' && (appKey.toLowerCase().includes('fecha') || appKey.toLowerCase().includes('salida') || appKey.toLowerCase().includes('llegada'))) {
-                const parsed = parseDate(val);
-                if (parsed) val = parsed;
-            }
-
-            // FIX: Prevent overwriting existing valid data with empty/null data
-            // This handles cases where multiple DB columns map to the same App Key (e.g. estado_1 vs estado_de_la_reserva)
-            const currentVal = newRow[appKey];
-            const hasCurrentVal = currentVal !== undefined && currentVal !== null && currentVal !== '';
-            const hasNewVal = val !== undefined && val !== null && val !== '';
-
-            if (hasCurrentVal && !hasNewVal) {
-                // Keep the existing valid value, ignore the new empty value
-                return;
-            }
-
-            newRow[appKey] = val;
-
-            // Ensure we capture originals for any columns not in config but present in data
-            if (!appKeyToDbKeyMap[appKey]) {
-                appKeyToDbKeyMap[appKey] = dbKey;
-            }
-        });
-        return newRow;
-    });
-
-    // Generate headers list - DEDUPLICATE using Set to avoid React key issues if multiple DB columns map to same App Key
-    const mappedHeaders = Array.from(foundDbHeaders).map(h => dbKeyToAppKeyMap[h] || h);
-    const allHeaders = Array.from(new Set(mappedHeaders));
-
-    // Determine visible headers based on DESIRED_COLUMNS_CONFIG
-    let defaultVisibleHeaders = DESIRED_COLUMNS_CONFIG
-        .map(c => c.key)
-        .filter(key => allHeaders.includes(key));
-
-    // Add DB specific keys to visible headers if they exist
-    if (allHeaders.includes('Estado de la Reserva')) {
-        // Ensure it's added if not already matched
-        if (!defaultVisibleHeaders.includes('Estado de la Reserva')) {
-            defaultVisibleHeaders.push('Estado de la Reserva');
-        }
-    }
-
-    // Swap room logic (same as file import)
-    const roomIndex = defaultVisibleHeaders.indexOf('Numero de habitacion');
-    const totalIndex = defaultVisibleHeaders.indexOf('Total Hab.');
-
-    if (roomIndex !== -1 && totalIndex !== -1) {
-        defaultVisibleHeaders = defaultVisibleHeaders.filter(h => h !== 'Total Hab.');
-        const newRoomIndex = defaultVisibleHeaders.indexOf('Numero de habitacion');
-        defaultVisibleHeaders.splice(newRoomIndex + 1, 0, 'Total Hab.');
-    }
-
-    return { data: processedData, allHeaders, defaultVisibleHeaders, originalHeaderMap: appKeyToDbKeyMap };
-};
+// Logic moved to utils/dataProcessor.ts
 
 
 export function AuditPage() {
