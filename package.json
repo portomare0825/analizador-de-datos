@@ -13,7 +13,7 @@
     "build": "vite build && electron-builder",
     "package": "vite build && electron-builder --win",
     "publish": "vite build && electron-builder --win -p always",
-    "push-update": "npm version patch && npm run publish",
+    "push-update": "npm version patch --force && npm run publish",
     "preview": "vite preview"
   },
   "dependencies": {
