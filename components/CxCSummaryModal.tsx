@@ -20,13 +20,24 @@ interface SourceSummary {
 
 function buildSummaryByType(data: any[], tipo: 'cxc' | 'intercambio'): SourceSummary[] {
     const summary: Record<string, number> = {};
+    
     data.forEach(row => {
-        const rowType = String(row['Tipo'] || row['tipo'] || '').toLowerCase().trim();
+        // Normalización del tipo para búsqueda (compatible con 'cxc', 'CxC', 'CXC', etc.)
+        const rawType = row['Tipo'] || row['tipo'] || row['TIPO'] || '';
+        const rowType = String(rawType).toLowerCase().trim();
+        
         if (rowType !== tipo) return;
-        const source = row['Fuente'] || 'Desconocido';
-        const amount = parseCurrency(row['Monto CxC'] || 0);
+
+        // Extraer fuente con fallbacks para claves comunes
+        const source = row['Fuente'] || row['fuente'] || row['fuente_destino'] || 'Desconocido';
+        
+        // Extraer monto con fallbacks para claves comunes
+        const rawAmount = row['Monto CxC'] || row['monto_cxc'] || row['monto'] || 0;
+        const amount = parseCurrency(rawAmount);
+        
         summary[source] = (summary[source] || 0) + amount;
     });
+
     return Object.entries(summary)
         .map(([source, total]) => ({ source, total }))
         .sort((a, b) => b.total - a.total);

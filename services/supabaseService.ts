@@ -842,19 +842,27 @@ export const fetchCxCRecords = async (): Promise<any[]> => {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        // Transformar para que DataTable lo entienda igual que una reserva si es necesario
-        return (data || []).map(row => ({
-            ...row,
-            'Nombre': row.Huesped || row.huesped || row.descripcion || 'CxC Record',
-            'Numero de la reserva': row.reserva_id,
-            'monto_cxc': row.monto,
-            'Fuente': row.fuente_destino,
-            'Fecha Registro': row.fecha_transaccion,
-            'Fecha de llegada': row.fecha_in,
-            'Salida': row.fecha_out,
-            'Tipo': row.tipo ? row.tipo.toUpperCase() : 'CxC',
-            'Hotel': row.hotel ? row.hotel.toUpperCase() : 'N/A'
-        }));
+        // Transformar para que DataTable y los modales lo entiendan correctamente
+        return (data || []).map(row => {
+            const rawTipo = (row.tipo || 'cxc').toLowerCase().trim();
+            const normalizedTipo = rawTipo === 'intercambio' ? 'INTERCAMBIO' : 'CXC';
+            const monto = parseFloat(row.monto) || 0;
+
+            return {
+                ...row,
+                'Nombre': row.Huesped || row.huesped || row.descripcion || 'Registro de CxC',
+                'Numero de la reserva': row.reserva_id,
+                'monto_cxc': monto,
+                'Monto CxC': monto,
+                'Fuente': row.fuente_destino || 'Desconocido',
+                'Fecha Registro': row.fecha_transaccion,
+                'Fecha de llegada': row.fecha_in,
+                'Salida': row.fecha_out,
+                'Tipo': normalizedTipo,
+                'tipo': rawTipo, // Mantenemos minúscula para compatibilidad
+                'Hotel': row.hotel ? row.hotel.toUpperCase() : 'N/A'
+            };
+        });
     } catch (error) {
         console.error("Error fetching CxC records:", error);
         return [];

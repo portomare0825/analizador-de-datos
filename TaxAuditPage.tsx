@@ -375,6 +375,9 @@ export function TaxAuditPage() {
         // Filtramos directamente sobre los datos crudos antes de mapear columnas si es posible
         // Buscamos claves comunes de estado en el objeto
         const nonCancelledData = dbData.filter(row => {
+            // No filtramos cancelados en la pestaña de CxC para evitar falsos positivos
+            if (currentTab === 'cxc-exchange') return true;
+
             const statusKeys = ['estado', 'estatus', 'status', 'estado_de_la_reserva', 'estado_1'];
             const isCancelled = statusKeys.some(k => {
                 const val = String(row[k] || '').toLowerCase();
@@ -388,19 +391,28 @@ export function TaxAuditPage() {
         const dbKeys = nonCancelledData.length > 0 ? Object.keys(nonCancelledData[0]) : [];
 
         DESIRED_COLUMNS_CONFIG.forEach(config => {
-            // Lógica de exclusión por pestaña para evitar conflictos de nombres genéricos (ej: 'fecha')
-            // Usa currentTab en lugar de activeTab para evitar closures obsoletos
             const isInvoiceTab = currentTab === 'invoiced-history';
+            const isCxCTab = currentTab === 'cxc-exchange';
+            
+            // Columnas que pertenecen a facturas
             const isInvoiceColumn = ['Fecha Factura', 'Factura', 'Registro Reserva', 'Monto Divisa', 'Monto Bs'].includes(config.key);
+            
+            // Columnas que pertenecen a CxC
+            const isCxCColumn = ['Tipo', 'Monto CxC'].includes(config.key);
 
-            // Si estamos en facturas, ignoramos columnas exclusivas de reservas (excepto las compartidas si las hubiera, aqui evitamos conflicto con 'fecha')
-            if (isInvoiceTab && !isInvoiceColumn && config.key !== 'Hotel' && config.key !== 'Fuente') {
+            // Si estamos en facturas, ignoramos columnas exclusivas de reservas
+            if (isInvoiceTab && !isInvoiceColumn && config.key !== 'Hotel' && config.key !== 'Fuente' && !isCxCColumn) {
                 return;
             }
 
-            // Si estamos en reservas, ignoramos columnas exclusivas de facturas (especialmente Fecha Factura que roba el key 'fecha')
+            // Si NO estamos en facturas, ignoramos las columnas de facturas (evita conflicto con 'fecha')
             if (!isInvoiceTab && isInvoiceColumn) {
                 return;
+            }
+
+            // Si estamos en CxC, nos aseguramos de no filtrar sus columnas propias
+            if (isCxCTab && isCxCColumn) {
+                // Proceder con el match
             }
 
             const normalizedConfigKey = normalizeKey(config.key);
