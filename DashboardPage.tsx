@@ -367,7 +367,7 @@ export function DashboardPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Revenue Chart */}
-                <div className="lg:col-span-2 bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl overflow-hidden relative">
+                <div className="lg:col-span-2 bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <TrendingUp size={120} />
                     </div>
@@ -375,7 +375,7 @@ export function DashboardPage() {
                         <TrendingUp className="w-5 h-5 text-emerald-400" />
                         Proyección de Ingresos (Próximos 15 días)
                     </h3>
-                    <div className="h-[300px] w-full">
+                    <div className="flex-grow min-h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData}>
                                 <defs>
