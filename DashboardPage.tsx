@@ -794,20 +794,25 @@ export function DashboardPage() {
                             </div>
 
                             {/* Hab + Noches + Pax */}
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
-                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Habitación</p>
-                                    <p className="font-bold text-white text-lg">{selectedReservation['Numero de habitacion'] || '—'}</p>
+                            <div className="grid grid-cols-4 gap-2">
+                                <div className="col-span-2 bg-brand-900/60 rounded-2xl p-3 border border-brand-800/30">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <p className="text-brand-400 text-[10px] uppercase tracking-wider">Habitación</p>
+                                        <span className="bg-brand-800/50 text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold">
+                                            {selectedReservation['Numero de habitacion']?.toString().split(',').filter((r: any) => r.trim().length > 0).length || 1} Total
+                                        </span>
+                                    </div>
+                                    <p className="font-bold text-white text-lg max-h-[4.5rem] overflow-y-auto no-scrollbar leading-tight">{selectedReservation['Numero de habitacion'] || '—'}</p>
                                 </div>
-                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
-                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Noches</p>
+                                <div className="col-span-1 bg-brand-900/60 rounded-2xl p-3 border border-brand-800/30">
+                                    <p className="text-brand-400 text-[10px] uppercase tracking-wider mb-1">Noches</p>
                                     <p className="font-bold text-white text-lg">{selectedReservation['Noches'] || '—'}</p>
                                 </div>
-                                <div className="bg-brand-800/40 rounded-2xl p-4 border border-brand-700/50">
-                                    <p className="text-brand-400 text-xs uppercase tracking-wider mb-1">Pax</p>
+                                <div className="col-span-1 bg-brand-900/60 rounded-2xl p-3 border border-brand-800/30">
+                                    <p className="text-brand-400 text-[10px] uppercase tracking-wider mb-1">Pax</p>
                                     <p className="font-bold text-white text-lg">
                                         {(parseInt(selectedReservation['Adultos']) || 0) + (parseInt(selectedReservation['Niños']) || 0)}
-                                        <span className="text-brand-400 text-xs font-normal ml-1">
+                                        <span className="text-brand-400 text-[9px] block font-normal leading-none mt-1">
                                             ({selectedReservation['Adultos'] || 0}A / {selectedReservation['Niños'] || 0}N)
                                         </span>
                                     </p>
