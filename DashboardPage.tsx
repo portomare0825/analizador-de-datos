@@ -42,7 +42,19 @@ export function DashboardPage() {
         pendingBalance: 0,
         cancellationRate: 0,
         averageDailyRate: 0,
-        occupancy: 0
+        occupancy: 0,
+        avgPerRoom: 0,
+        avgPerNight: 0,
+        avgPerPax: 0,
+        avgPerRoomNight: 0,
+        avgPerPaxNight: 0,
+        revpar: 0,
+        avgRoomsOccupied: 0,
+        compRoomNights: 0,
+        paidRoomNights: 0,
+        totalRoomRevenue: 0,
+        compTotalRooms: 0,
+        compTotalPax: 0
     });
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -103,6 +115,22 @@ export function DashboardPage() {
             const revenueByDate: Record<string, number> = {};
             const adultsByDate: Record<string, number> = {};
             const kidsByDate: Record<string, number> = {};
+            
+            let totalRoomCount = 0;
+            let totalNightsCount = 0;
+            let totalPaxCount = 0;
+            let totalRoomNights = 0;
+            let totalPaxNights = 0;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const hotelCapacity = hotel === 'plus' ? 91 : 126;
+            const totalInventoryRoomNights = hotelCapacity * daysInMonth;
+
+            let totalRoomRevenue = 0;
+            let compRoomNightsCount = 0;
+            let paidRoomNightsCount = 0;
+            let compTotalRooms = 0;
+            let compTotalPax = 0;
 
             if (!processedData || processedData.length === 0) {
                 setStats(initialStats);
@@ -162,6 +190,29 @@ export function DashboardPage() {
                         adultsByDate[dateStr] = (adultsByDate[dateStr] || 0) + adults;
                         kidsByDate[dateStr] = (kidsByDate[dateStr] || 0) + kids;
                     }
+
+                    // Stats for averages
+                    const roomsStr = row['Numero de habitacion'] || '';
+                    const rc = roomsStr.toString().split(',').filter((r: any) => r.trim().length > 0).length || 1;
+                    const n = parseInt(row['Noches']) || 1;
+                    const p = (parseInt(row['Adultos']) || 0) + (parseInt(row['Niños']) || 0) || 1;
+                    const roomRevenue = parseFloat((row['Total Hab.'] || '0').toString().replace(/[$,]/g, '')) || 0;
+                    const isComp = (row['Fuente'] || '').toString().toLowerCase() === 'complementary';
+
+                    totalRoomRevenue += roomRevenue;
+                    totalRoomCount += rc;
+                    totalNightsCount += n;
+                    totalPaxCount += p;
+                    totalRoomNights += (rc * n);
+                    totalPaxNights += (p * n);
+
+                    if (isComp) {
+                        compRoomNightsCount += (rc * n);
+                        compTotalRooms += rc;
+                        compTotalPax += p;
+                    } else {
+                        paidRoomNightsCount += (rc * n);
+                    }
                 }
             });
 
@@ -218,8 +269,20 @@ export function DashboardPage() {
                 paidAmount: totalPaid,
                 pendingBalance: totalPending,
                 cancellationRate: (cancelledCount / (cancelledCount + confirmedCount)) * 100 || 0,
-                averageDailyRate: totalRev / confirmedCount || 0,
-                occupancy: 0 
+                averageDailyRate: totalRoomRevenue / (paidRoomNightsCount || 1),
+                occupancy: (totalRoomNights / totalInventoryRoomNights) * 100 || 0,
+                avgPerRoom: totalRev / (totalRoomCount || 1),
+                avgPerNight: totalRev / (totalNightsCount || 1),
+                avgPerPax: totalRev / (totalPaxCount || 1),
+                avgPerRoomNight: totalRoomRevenue / (paidRoomNightsCount || 1),
+                avgPerPaxNight: totalRev / (totalPaxNights || 1),
+                revpar: totalRoomRevenue / (totalInventoryRoomNights || 1),
+                avgRoomsOccupied: totalRoomNights / (daysInMonth || 1),
+                compRoomNights: compRoomNightsCount,
+                paidRoomNights: paidRoomNightsCount,
+                totalRoomRevenue: totalRoomRevenue,
+                compTotalRooms: compTotalRooms,
+                compTotalPax: compTotalPax
             });
 
             setCriticalReservations(critical);
@@ -242,7 +305,19 @@ export function DashboardPage() {
         pendingBalance: 0,
         cancellationRate: 0,
         averageDailyRate: 0,
-        occupancy: 0
+        occupancy: 0,
+        avgPerRoom: 0,
+        avgPerNight: 0,
+        avgPerPax: 0,
+        avgPerRoomNight: 0,
+        avgPerPaxNight: 0,
+        revpar: 0,
+        avgRoomsOccupied: 0,
+        compRoomNights: 0,
+        paidRoomNights: 0,
+        totalRoomRevenue: 0,
+        compTotalRooms: 0,
+        compTotalPax: 0
     };
 
     if (error) {
@@ -363,6 +438,57 @@ export function DashboardPage() {
                         data: detailedStats.cancelledBySource,
                         type: 'count'
                     })}
+                />
+            </div>
+
+            {/* Averages Grid - Compact & Professional */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                <CompactStatCard 
+                    title="ADR (Pagado)" 
+                    value={formatCurrency(stats.avgPerRoomNight)} 
+                    icon={<Hotel className="w-4 h-4" />}
+                    color="emerald"
+                    label="Excluye cortesías"
+                />
+                <CompactStatCard 
+                    title="Cortesías" 
+                    value={`${stats.compTotalRooms} habs / ${stats.compTotalPax} pax`} 
+                    icon={<ArrowDownRight className="w-4 h-4" />}
+                    color="amber"
+                    label={`${(stats.compRoomNights / (stats.compRoomNights + stats.paidRoomNights || 1) * 100).toFixed(1)}% de la ocupación mensual`}
+                />
+                <CompactStatCard 
+                    title="RevPAR" 
+                    value={formatCurrency(stats.revpar)} 
+                    icon={<TrendingUp className="w-4 h-4" />}
+                    color="indigo"
+                    label="Revenue x Hab Disponible"
+                />
+                <CompactStatCard 
+                    title="Ocupación" 
+                    value={`${stats.occupancy.toFixed(1)}%`} 
+                    icon={<Users className="w-4 h-4" />}
+                    color="blue"
+                    label={`${stats.avgRoomsOccupied.toFixed(1)} / ${hotel === 'plus' ? 91 : 126} habs (promedio)`}
+                />
+                <CompactStatCard 
+                    title="Prom. Noche" 
+                    value={formatCurrency(stats.avgPerNight)} 
+                    icon={<Calendar className="w-4 h-4" />}
+                    color="amber"
+                />
+                <CompactStatCard 
+                    title="Prom. Pax" 
+                    value={formatCurrency(stats.avgPerPax)} 
+                    icon={<Users className="w-4 h-4" />}
+                    color="rose"
+                />
+                <CompactStatCard 
+                    title="Pax / Noche" 
+                    value={formatCurrency(stats.avgPerPaxNight)} 
+                    icon={<TrendingUp className="w-4 h-4" />}
+                    color="brand"
+                    label="Revenue x Pax / Noche"
                 />
             </div>
 
@@ -688,6 +814,44 @@ export function DashboardPage() {
                                 </div>
                             </div>
 
+                            {/* Promedios */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-brand-900/60 rounded-2xl p-4 border border-emerald-500/30">
+                                    <p className="text-emerald-400/80 text-[10px] uppercase tracking-wider mb-1">Prom. Hab</p>
+                                    <p className="font-bold text-emerald-400 text-lg">
+                                        {formatCurrency((parseFloat(selectedReservation['Total General']) || 0) / (selectedReservation['Numero de habitacion']?.toString().split(',').filter((r: any) => r.trim().length > 0).length || 1))}
+                                    </p>
+                                </div>
+                                <div className="bg-brand-900/60 rounded-2xl p-4 border border-emerald-500/30">
+                                    <p className="text-emerald-400/80 text-[10px] uppercase tracking-wider mb-1">Prom. Noche</p>
+                                    <p className="font-bold text-emerald-400 text-lg">
+                                        {formatCurrency((parseFloat(selectedReservation['Total General']) || 0) / (parseInt(selectedReservation['Noches']) || 1))}
+                                    </p>
+                                </div>
+                                <div className="bg-brand-900/60 rounded-2xl p-4 border border-emerald-500/30">
+                                    <p className="text-emerald-400/80 text-[10px] uppercase tracking-wider mb-1">Prom. Pax</p>
+                                    <p className="font-bold text-emerald-400 text-lg">
+                                        {formatCurrency((parseFloat(selectedReservation['Total General']) || 0) / (((parseInt(selectedReservation['Adultos']) || 0) + (parseInt(selectedReservation['Niños']) || 0)) || 1))}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Promedios Compuestos */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-brand-900/60 rounded-2xl p-4 border border-blue-500/30">
+                                    <p className="text-blue-400/80 text-[10px] uppercase tracking-wider mb-1">Prom. Hab / Noche</p>
+                                    <p className="font-bold text-blue-400 text-lg">
+                                        {formatCurrency((parseFloat(selectedReservation['Total General']) || 0) / ((selectedReservation['Numero de habitacion']?.toString().split(',').filter((r: any) => r.trim().length > 0).length || 1) * (parseInt(selectedReservation['Noches']) || 1)))}
+                                    </p>
+                                </div>
+                                <div className="bg-brand-900/60 rounded-2xl p-4 border border-blue-500/30">
+                                    <p className="text-blue-400/80 text-[10px] uppercase tracking-wider mb-1">Prom. Pax / Noche</p>
+                                    <p className="font-bold text-blue-400 text-lg">
+                                        {formatCurrency((parseFloat(selectedReservation['Total General']) || 0) / ((((parseInt(selectedReservation['Adultos']) || 0) + (parseInt(selectedReservation['Niños']) || 0)) || 1) * (parseInt(selectedReservation['Noches']) || 1)))}
+                                    </p>
+                                </div>
+                            </div>
+
                             {/* Montos */}
                             <div className="bg-brand-800/20 rounded-2xl p-4 border border-brand-700/50 space-y-3">
                                 <p className="text-brand-400 text-xs uppercase tracking-wider">Resumen Financiero</p>
@@ -718,6 +882,31 @@ export function DashboardPage() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function CompactStatCard({ title, value, icon, color, label }: any) {
+    const colorClasses: any = {
+        emerald: 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5',
+        blue: 'border-blue-500/20 text-blue-400 bg-blue-500/5',
+        amber: 'border-amber-500/20 text-amber-400 bg-amber-500/5',
+        rose: 'border-rose-500/20 text-rose-400 bg-rose-500/5',
+        indigo: 'border-indigo-500/20 text-indigo-400 bg-indigo-500/5'
+    };
+
+    return (
+        <div className={`flex flex-col p-3 rounded-xl border backdrop-blur-md transition-all duration-300 hover:bg-brand-800/40 ${colorClasses[color] || 'border-brand-800 bg-brand-900/40'}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+                <div className="p-1 rounded-lg bg-brand-800 border border-brand-700/50">
+                    {React.cloneElement(icon as React.ReactElement, { className: "w-3.5 h-3.5" })}
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-brand-400">{title}</span>
+            </div>
+            <div className="flex flex-col">
+                <span className="text-base font-bold tracking-tight text-white">{value}</span>
+                {label && <span className="text-[8px] text-brand-500 font-medium mt-0.5 leading-tight">{label}</span>}
+            </div>
         </div>
     );
 }
