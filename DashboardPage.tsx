@@ -23,7 +23,11 @@ import {
     ArrowUpRight, 
     ArrowDownRight,
     Calendar,
-    Hotel
+    Hotel,
+    X,
+    ChevronRight,
+    Tag,
+    Info
 } from 'lucide-react';
 import { fetchDataFromSupabase } from './services/supabaseService';
 import { processDatabaseData } from './utils/dataProcessor';
@@ -70,6 +74,8 @@ export function DashboardPage() {
         type: 'currency'
     });
     const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
+    const [selectedPaxDetail, setSelectedPaxDetail] = useState<{ date: string, total: number, adults: number, kids: number, sources: any[] } | null>(null);
+    const [selectedSourceDetail, setSelectedSourceDetail] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const months = [
@@ -115,6 +121,7 @@ export function DashboardPage() {
             const revenueByDate: Record<string, number> = {};
             const adultsByDate: Record<string, number> = {};
             const kidsByDate: Record<string, number> = {};
+            const paxSourcesByDate: Record<string, Record<string, { adults: number, kids: number, revenue: number, paid: number, pending: number, status: string, resIds: string[], rows: any[] }>> = {};
             
             let totalRoomCount = 0;
             let totalNightsCount = 0;
@@ -189,6 +196,22 @@ export function DashboardPage() {
                         revenueByDate[dateStr] = (revenueByDate[dateStr] || 0) + total;
                         adultsByDate[dateStr] = (adultsByDate[dateStr] || 0) + adults;
                         kidsByDate[dateStr] = (kidsByDate[dateStr] || 0) + kids;
+                        
+                        if (!paxSourcesByDate[dateStr]) paxSourcesByDate[dateStr] = {};
+                        if (!paxSourcesByDate[dateStr][source]) paxSourcesByDate[dateStr][source] = { adults: 0, kids: 0, revenue: 0, paid: 0, pending: 0, status: '', resIds: [], rows: [] };
+                        paxSourcesByDate[dateStr][source].adults += adults;
+                        paxSourcesByDate[dateStr][source].kids += kids;
+                        paxSourcesByDate[dateStr][source].revenue += total;
+                        paxSourcesByDate[dateStr][source].paid += paid;
+                        paxSourcesByDate[dateStr][source].pending += pending;
+                        paxSourcesByDate[dateStr][source].status = row['Estado de la Reserva'] || 'Confirmada';
+                        
+                        
+                        const resId = (row['Numero de la reserva'] || row['ID de la reserva'] || '').toString();
+                        if (resId && !paxSourcesByDate[dateStr][source].resIds.includes(resId)) {
+                            paxSourcesByDate[dateStr][source].resIds.push(resId);
+                        }
+                        paxSourcesByDate[dateStr][source].rows.push(row);
                     }
 
                     // Stats for averages
@@ -242,9 +265,23 @@ export function DashboardPage() {
                 const dateObj = new Date(dateStr + 'T12:00:00');
                 return {
                     name: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    dateStr: dateStr,
+                    fullDate: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }),
                     adults: adultsByDate[dateStr] || 0,
                     kids: kidsByDate[dateStr] || 0,
-                    total: (adultsByDate[dateStr] || 0) + (kidsByDate[dateStr] || 0)
+                    total: (adultsByDate[dateStr] || 0) + (kidsByDate[dateStr] || 0),
+                    sources: Object.entries(paxSourcesByDate[dateStr] || {}).map(([name, data]: [string, any]) => ({
+                        name,
+                        adults: data.adults,
+                        kids: data.kids,
+                        total: data.adults + data.kids,
+                        revenue: data.revenue,
+                        paid: data.paid,
+                        pending: data.pending,
+                        status: data.status,
+                        resIds: data.resIds,
+                        rows: data.rows
+                    })).sort((a, b) => b.total - a.total)
                 };
             });
 
@@ -353,6 +390,37 @@ export function DashboardPage() {
 
     return (
         <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
+            <style>{`
+                .recharts-wrapper, .recharts-surface, .recharts-container, .recharts-wrapper *, .recharts-surface * {
+                    outline: none !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    -webkit-tap-highlight-color: transparent !important;
+                    -webkit-focus-ring-color: transparent !important;
+                }
+                .recharts-wrapper:focus, .recharts-surface:focus, .recharts-container:focus,
+                .recharts-wrapper:active, .recharts-surface:active, .recharts-container:active,
+                .recharts-wrapper:focus-visible, .recharts-surface:focus-visible {
+                    outline: none !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                svg, svg * {
+                    outline: none !important;
+                }
+                .recharts-cartesian-grid-horizontal line,
+                .recharts-cartesian-grid-vertical line {
+                    stroke: #1f2937 !important;
+                    stroke-opacity: 0.5;
+                }
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
@@ -495,7 +563,7 @@ export function DashboardPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Revenue Chart */}
-                <div className="lg:col-span-2 bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
+                <div className="lg:col-span-2 bg-brand-900/40 backdrop-blur-xl p-6 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                         <TrendingUp size={120} />
                     </div>
@@ -505,7 +573,14 @@ export function DashboardPage() {
                     </h3>
                     <div className="flex-grow min-h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData}>
+                            <AreaChart 
+                                data={chartData}
+                                tabIndex={-1}
+                                onMouseDown={(_: any, e: any) => {
+                                    if (e && e.preventDefault) e.preventDefault();
+                                }}
+                                style={{ outline: 'none', border: 'none' }}
+                            >
                                 <defs>
                                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -588,24 +663,49 @@ export function DashboardPage() {
             </div>
 
             {/* Pax Projection Chart */}
-            <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl mb-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
+            <div className="bg-brand-900/40 backdrop-blur-xl p-6 rounded-3xl shadow-2xl mb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                     <Users size={120} />
                 </div>
                 <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                     <Users className="w-5 h-5 text-blue-400" />
                     Proyección de Huéspedes (Pax entrando por día)
                 </h3>
-                <div className="h-[300px] w-full">
+                <div className="h-[300px] w-full border-0 outline-none">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={paxData}>
+                        <BarChart 
+                            data={paxData}
+                            style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
+                            className="outline-none focus:outline-none"
+                            tabIndex={-1}
+                            onMouseDown={(_: any, e: any) => {
+                                if (e && e.preventDefault) e.preventDefault();
+                            }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                            <XAxis 
-                                dataKey="name" 
+                             <XAxis 
+                                dataKey="dateStr" 
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: '#9ca3af', fontSize: 12 }}
-                                dy={10}
+                                height={50}
+                                tick={(props: any) => {
+                                    const { x, y, payload } = props;
+                                    if (!payload.value) return null;
+                                    const date = new Date(payload.value + 'T12:00:00');
+                                    const day = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                                    const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+                                    
+                                    return (
+                                        <g transform={`translate(${x},${y})`}>
+                                            <text x={0} y={15} textAnchor="middle" fill="#94a3b8" fontSize={11} fontWeight="500">
+                                                {day}
+                                            </text>
+                                            <text x={0} y={30} textAnchor="middle" fill="#64748b" fontSize={9} style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {weekday}
+                                            </text>
+                                        </g>
+                                    );
+                                }}
                             />
                             <YAxis 
                                 axisLine={false}
@@ -613,13 +713,16 @@ export function DashboardPage() {
                                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                             />
                             <Tooltip 
+                                cursor={{ fill: 'rgba(255, 255, 255, 0.05)', radius: 4 }}
                                 contentStyle={{ 
                                     backgroundColor: '#0f172a', 
                                     border: '1px solid #1e293b',
                                     borderRadius: '12px',
-                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                    pointerEvents: 'none'
                                 }}
                                 itemStyle={{ fontSize: '13px' }}
+                                wrapperStyle={{ pointerEvents: 'none' }}
                             />
                             <Legend 
                                 verticalAlign="top" 
@@ -627,15 +730,31 @@ export function DashboardPage() {
                                 iconType="circle"
                                 wrapperStyle={{ paddingBottom: '20px' }}
                             />
-                            <Bar dataKey="adults" name="Adultos" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="kids" name="Niños" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar 
+                                dataKey="adults" 
+                                name="Adultos" 
+                                stackId="a" 
+                                fill="#3b82f6" 
+                                radius={[0, 0, 0, 0]} 
+                                onClick={(data) => data && setSelectedPaxDetail(data)}
+                                cursor="pointer"
+                            />
+                            <Bar 
+                                dataKey="kids" 
+                                name="Niños" 
+                                stackId="a" 
+                                fill="#10b981" 
+                                radius={[4, 4, 0, 0]} 
+                                onClick={(data) => data && setSelectedPaxDetail(data)}
+                                cursor="pointer"
+                            />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
             {/* Critical Reservations Table */}
-            <div className="bg-brand-900/40 backdrop-blur-xl border border-brand-800 p-6 rounded-3xl shadow-2xl">
+            <div className="bg-brand-900/40 backdrop-blur-xl p-6 rounded-3xl shadow-2xl">
                 <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-rose-400" />
                     Saldos Pendientes Críticos
@@ -745,7 +864,16 @@ export function DashboardPage() {
                             <div>
                                 <p className="text-brand-400 text-xs uppercase tracking-widest mb-1">Detalle de Reserva</p>
                                 <h3 className="text-2xl font-bold text-white">{selectedReservation['Nombre'] || 'Huésped sin nombre'}</h3>
-                                <p className="text-brand-300 font-mono text-sm mt-0.5">#{selectedReservation['Numero de la reserva'] || '—'}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <p className="text-brand-300 font-mono text-sm">#{selectedReservation['Numero de la reserva'] || '—'}</p>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                        selectedReservation['Estado de la Reserva']?.toString().toLowerCase().includes('cancel')
+                                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    }`}>
+                                        {selectedReservation['Estado de la Reserva'] || 'Confirmada'}
+                                    </span>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setSelectedReservation(null)}
@@ -882,6 +1010,248 @@ export function DashboardPage() {
                                 className="w-full py-2.5 bg-brand-800 hover:bg-brand-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98]"
                             >
                                 Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pax Detail Modal - Source Breakdown */}
+            {selectedPaxDetail && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                    onClick={() => setSelectedPaxDetail(null)}
+                >
+                    <div
+                        className="bg-brand-900 border border-brand-700 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-brand-800 to-brand-900 p-6 border-b border-brand-700 flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                                        <Users className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <p className="text-brand-400 text-[10px] uppercase tracking-widest font-bold">Resumen de Huéspedes</p>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">{selectedPaxDetail.fullDate}</h3>
+                                <div className="flex gap-4 mt-3">
+                                    <div className="bg-blue-500/10 px-3 py-1.5 rounded-xl border border-blue-500/20 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                        <span className="text-blue-100 text-sm font-semibold">{selectedPaxDetail.adults} <span className="text-blue-400/70 font-normal">Adultos</span></span>
+                                    </div>
+                                    <div className="bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                        <span className="text-emerald-100 text-sm font-semibold">{selectedPaxDetail.kids} <span className="text-emerald-400/70 font-normal">Niños</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedPaxDetail(null)}
+                                className="p-2 hover:bg-brand-700 rounded-xl transition-colors group"
+                            >
+                                <X className="w-6 h-6 text-brand-400 group-hover:text-white transition-colors" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 max-h-[60vh] overflow-y-auto no-scrollbar space-y-4 bg-brand-950/20">
+                            <p className="text-brand-500 text-[10px] font-bold uppercase tracking-wider px-1">Distribución por Fuente</p>
+                            {selectedPaxDetail.sources && selectedPaxDetail.sources.length > 0 ? (
+                                selectedPaxDetail.sources.map((src: any, i: number) => (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => setSelectedSourceDetail(src)}
+                                        className={`rounded-2xl p-4 border transition-all group cursor-pointer hover:scale-[1.01] active:scale-[0.99] ${
+                                            src.pending > 1 
+                                                ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50' 
+                                                : 'bg-brand-900/60 border-brand-800/30 hover:bg-brand-800/80 hover:border-brand-600'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                                                    src.pending > 1 ? 'bg-amber-500/20 text-amber-400' : 'bg-brand-800 text-brand-400'
+                                                }`}>
+                                                    {src.name.substring(0, 1).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-white group-hover:text-blue-400 transition-colors">{src.name}</p>
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border ${
+                                                            src.status?.toLowerCase().includes('cancel')
+                                                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        }`}>
+                                                            {src.status || 'Confirmada'}
+                                                        </span>
+                                                    </div>
+                                                     <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-brand-400 text-xs">{src.adults} Ad.</span>
+                                                        <span className="w-1 h-1 rounded-full bg-brand-700"></span>
+                                                        <span className="text-brand-400 text-xs">{src.kids} Ni.</span>
+                                                        <div className="flex items-center gap-1.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <span className="text-[9px] text-blue-400 font-bold uppercase">Ver Reservas</span>
+                                                            <ChevronRight className="w-3 h-3 text-blue-400" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-white">{src.total}</p>
+                                                <p className="text-[9px] text-brand-500 uppercase tracking-tighter font-bold">Pax Total</p>
+                                            </div>
+                                        </div>
+
+                                        <div className={`grid grid-cols-3 gap-2 pt-3 border-t ${
+                                            src.pending > 1 ? 'border-amber-500/20' : 'border-brand-800/50'
+                                        }`}>
+                                            <div>
+                                                <p className="text-[8px] uppercase text-brand-500 font-bold mb-0.5">Total</p>
+                                                <p className="text-xs font-mono font-bold text-white">{formatCurrency(src.revenue)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] uppercase text-brand-500 font-bold mb-0.5">Pagado</p>
+                                                <p className="text-xs font-mono font-bold text-emerald-400">{formatCurrency(src.paid)}</p>
+                                            </div>
+                                            <div>
+                                                <p className={`text-[8px] uppercase font-bold mb-0.5 ${src.pending > 1 ? 'text-amber-500' : 'text-brand-500'}`}>Pendiente</p>
+                                                <p className={`text-xs font-mono font-bold ${src.pending > 1 ? 'text-amber-400' : 'text-brand-400'}`}>
+                                                    {formatCurrency(src.pending)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-12 bg-brand-900/40 rounded-3xl border border-dashed border-brand-800">
+                                    <Users className="w-12 h-12 text-brand-800 mx-auto mb-3 opacity-20" />
+                                    <p className="text-brand-500 italic">No hay detalles de fuente disponibles.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 bg-brand-950/60 border-t border-brand-800">
+                            <button
+                                onClick={() => setSelectedPaxDetail(null)}
+                                className="w-full py-3 bg-brand-800 hover:bg-brand-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98] border border-brand-700"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Source Details Sub-Modal - Individual Reservations */}
+            {selectedSourceDetail && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                    onClick={() => setSelectedSourceDetail(null)}
+                >
+                    <div
+                        className="bg-brand-900 border border-blue-500/30 w-full max-w-2xl rounded-3xl shadow-[0_0_50px_rgba(59,130,246,0.2)] overflow-hidden animate-in fade-in zoom-in duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-900/40 to-brand-900 p-6 border-b border-blue-500/20 flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                                        <Tag className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <p className="text-blue-400 text-[10px] uppercase tracking-widest font-bold">Detalle de Reservas</p>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">{selectedSourceDetail.name}</h3>
+                                <p className="text-brand-400 text-xs mt-1">Total de {selectedSourceDetail.rows?.length || 0} registros encontrados</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedSourceDetail(null)}
+                                className="p-2 hover:bg-brand-700 rounded-xl transition-colors group"
+                            >
+                                <X className="w-6 h-6 text-brand-400 group-hover:text-white transition-colors" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 max-h-[70vh] overflow-y-auto no-scrollbar space-y-3 bg-brand-950/40">
+                            {selectedSourceDetail.rows?.map((row: any, idx: number) => {
+                                if (!row) return null;
+                                const resId = (row['Numero de la reserva'] || row['ID de la reserva'] || 'N/A').toString();
+                                const room = row['Numero de habitacion'] || 'Sin Hab.';
+                                const ads = parseInt(row['Adultos']) || 0;
+                                const kds = parseInt(row['Niños']) || 0;
+                                const status = (row['Estado de la Reserva'] || 'Confirmada').toString();
+                                const rev = parseFloat((row['Total Hab.'] || '0').toString().replace(/[$,]/g, '')) || 0;
+                                const pd = parseFloat((row['Total Pagado'] || '0').toString().replace(/[$,]/g, '')) || 0;
+                                const pen = rev - pd;
+
+                                return (
+                                    <div key={idx} className="bg-brand-900/80 border border-brand-800 rounded-2xl p-4 hover:border-blue-500/30 transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-white font-black text-sm bg-blue-600/20 px-2 py-0.5 rounded border border-blue-500/30">
+                                                        Loc: {resId}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                                                        status.toLowerCase().includes('cancel')
+                                                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                    }`}>
+                                                        {status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-brand-400 mt-2">
+                                                    <div className="flex items-center gap-1">
+                                                        <Hotel className="w-3 h-3 text-blue-400" />
+                                                        <span className="text-xs font-bold">Hab: {room}</span>
+                                                    </div>
+                                                    <div className="w-1 h-1 rounded-full bg-brand-700"></div>
+                                                    <div className="flex items-center gap-1">
+                                                        <Users className="w-3 h-3 text-blue-400" />
+                                                        <span className="text-xs font-bold">{ads + kds} Pax ({ads}/{kds})</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right space-y-1">
+                                                <p className="text-sm font-black text-white">{formatCurrency(rev)}</p>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <p className="text-[9px] font-bold text-emerald-500">PAG: {formatCurrency(pd)}</p>
+                                                    {pen > 0 && (
+                                                        <p className="text-[9px] font-bold text-amber-500">PEN: {formatCurrency(pen)}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Footer - Summary & Close */}
+                        <div className="p-6 bg-brand-950/80 border-t border-blue-500/20">
+                            <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                                <div className="text-center border-r border-blue-500/10">
+                                    <p className="text-[10px] text-brand-400 uppercase font-bold tracking-tighter mb-1">Total Hab.</p>
+                                    <p className="text-lg font-black text-white">{formatCurrency(selectedSourceDetail.revenue || 0)}</p>
+                                </div>
+                                <div className="text-center border-r border-blue-500/10">
+                                    <p className="text-[10px] text-emerald-500 uppercase font-bold tracking-tighter mb-1">Total Pagado</p>
+                                    <p className="text-lg font-black text-emerald-400">{formatCurrency(selectedSourceDetail.paid || 0)}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] text-amber-500 uppercase font-bold tracking-tighter mb-1">Total Pend.</p>
+                                    <p className="text-lg font-black text-amber-400">{formatCurrency(selectedSourceDetail.pending || 0)}</p>
+                                </div>
+                            </div>
+                            
+                            <button
+                                onClick={() => setSelectedSourceDetail(null)}
+                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black rounded-2xl transition-all shadow-[0_10px_20px_rgba(59,130,246,0.2)] active:scale-[0.98] uppercase tracking-widest text-sm"
+                            >
+                                Cerrar Detalles
                             </button>
                         </div>
                     </div>
