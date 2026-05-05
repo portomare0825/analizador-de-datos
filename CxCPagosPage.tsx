@@ -26,23 +26,38 @@ export function CxCPagosPage() {
                 
                 // Filtros específicos solicitados por el usuario
                 // 1. Descripción: "Cuentas por Cobrar - Pago Registrada"
-                // 2. No anulado: Buscamos en el campo 'estado' o similar
+                // 2. Excluir si existe "Cuentas por Cobrar - Anulación Registrada" para esa reserva
+                // 3. No anulado: Buscamos en el campo 'estado' o similar
                 
-                // Nota: Usamos fetchDataFromSupabaseParallel para mejor rendimiento si hay muchos datos
+                // Nota: Obtenemos todos los registros de CxC para poder detectar anulaciones cruzadas
                 const filters = {
                     ilike: {
-                        descripcion: '%Cuentas por Cobrar - Pago Registrada%'
+                        descripcion: '%Cuentas por Cobrar%'
                     }
                 };
 
-                const dbData = await fetchDataFromSupabaseParallel(TABLE_NAME, 30000, filters);
+                const allCxCData = await fetchDataFromSupabaseParallel(TABLE_NAME, 30000, filters);
                 
-                // Filtrado adicional en el cliente para asegurar que no esté anulado
-                // (Por si acaso el filtro ilike no es suficiente o queremos ser más precisos con múltiples campos)
-                const validData = dbData.filter(row => {
+                // 1. Identificar números de reserva que tienen al menos una anulación de CxC
+                const anuladosResIds = new Set(
+                    allCxCData
+                        .filter(row => String(row.descripcion || '').includes('Cuentas por Cobrar - Anulación Registrada'))
+                        .map(row => String(row.num_reserva || row.NUM_RESERVA || ''))
+                );
+
+                // 2. Filtrar para mostrar solo "Pago Registrada" de reservas que NO han sido anuladas
+                const validData = allCxCData.filter(row => {
+                    const desc = String(row.descripcion || '');
+                    const resId = String(row.num_reserva || row.NUM_RESERVA || '');
+                    
+                    const isPagoRegistrado = desc.includes('Cuentas por Cobrar - Pago Registrada');
+                    const isReservaAnuladaEnCxC = anuladosResIds.has(resId);
+                    
+                    // Filtrado por estado del registro (si el registro mismo está marcado como anulado)
                     const rowStatus = String(row.estado || row.status || '').toLowerCase();
-                    const isAnulado = rowStatus.includes('anulado') || rowStatus.includes('anulada') || rowStatus.includes('void');
-                    return !isAnulado;
+                    const isAnuladoStatus = rowStatus.includes('anulado') || rowStatus.includes('anulada') || rowStatus.includes('void');
+                    
+                    return isPagoRegistrado && !isReservaAnuladaEnCxC && !isAnuladoStatus;
                 });
 
                 setData(validData);
@@ -152,6 +167,7 @@ export function CxCPagosPage() {
                             <DataTable 
                                 headers={headers}
                                 data={filteredData}
+                                hotelSource={hotel}
                             />
                         </div>
                     )}

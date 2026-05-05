@@ -389,13 +389,14 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     // Función extraída para poder llamarla desde el botón de recarga
     const loadRowDetails = async (row: DataRow) => {
         // Intentar encontrar el número de reserva usando varias claves posibles para robustez
-        let resNum = row['Numero de la reserva'] || row['Registro Reserva'];
+        let resNum = row['Numero de la reserva'] || row['Registro Reserva'] || row['num_reserva'] || row['NUM_RESERVA'] || row['Reserva'] || row['Numero de reserva'];
 
         if (!resNum) {
-            // Fallback: Buscar keys que contengan "reserva" y "numero" si la exacta no existe
-            const fuzzyKey = Object.keys(row).find(k =>
-                k.toLowerCase().includes('reserva') && k.toLowerCase().includes('numero')
-            );
+            // Fallback: Buscar keys que contengan "reserva" y ("numero" o "num") si la exacta no existe
+            const fuzzyKey = Object.keys(row).find(k => {
+                const kl = k.toLowerCase();
+                return kl.includes('reserva') && (kl.includes('numero') || kl.includes('num'));
+            });
             if (fuzzyKey) resNum = row[fuzzyKey];
         }
 
@@ -1277,14 +1278,14 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                 {(selectedRow['Fuente'] || selectedRow['fuente']) && (selectedRow['Nombre'] || selectedRow['Huesped']) && (
                                                     <span className="text-brand-600">•</span>
                                                 )}
-                                                {(selectedRow['Nombre'] || selectedRow['Huesped']) && (
+                                                {(selectedRow['Nombre'] || selectedRow['Huesped'] || selectedRow['nombre']) && (
                                                     <span className="text-xs text-brand-300 font-medium truncate max-w-[200px]">
-                                                        {selectedRow['Nombre'] || selectedRow['Huesped']}
+                                                        {selectedRow['Nombre'] || selectedRow['Huesped'] || selectedRow['nombre']}
                                                     </span>
                                                 )}
                                             </div>
                                             <p className="text-2xl font-bold text-white tracking-tight leading-none mt-1">
-                                                #{selectedRow['Factura'] || selectedRow['Numero de la reserva'] || selectedRow['Registro Reserva'] || 'N/A'}
+                                                #{selectedRow['Factura'] || selectedRow['Numero de la reserva'] || selectedRow['Registro Reserva'] || selectedRow['num_reserva'] || selectedRow['NUM_RESERVA'] || 'N/A'}
                                             </p>
                                         </div>
                                     </div>
