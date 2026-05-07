@@ -27,7 +27,11 @@ import {
     X,
     ChevronRight,
     Tag,
-    Info
+    Info,
+    Printer,
+    User,
+    LogIn,
+    LogOut
 } from 'lucide-react';
 import { fetchDataFromSupabase } from './services/supabaseService';
 import { processDatabaseData } from './utils/dataProcessor';
@@ -76,6 +80,7 @@ export function DashboardPage() {
     const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
     const [selectedPaxDetail, setSelectedPaxDetail] = useState<{ date: string, total: number, adults: number, kids: number, sources: any[] } | null>(null);
     const [selectedSourceDetail, setSelectedSourceDetail] = useState<any | null>(null);
+    const [compReservations, setCompReservations] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const months = [
@@ -138,6 +143,7 @@ export function DashboardPage() {
             let paidRoomNightsCount = 0;
             let compTotalRooms = 0;
             let compTotalPax = 0;
+            let compList: any[] = [];
 
             if (!processedData || processedData.length === 0) {
                 setStats(initialStats);
@@ -164,6 +170,10 @@ export function DashboardPage() {
                 setCriticalReservations([]);
                 return;
             }
+
+            // DEBUG temporal: ver valores únicos de Fuente
+            const uniqueFuentes = [...new Set(filteredData.map((r: any) => r['Fuente'] || r['fuente'] || 'SIN_FUENTE'))];
+            console.log('[DEBUG Cortesías] Fuentes únicas:', uniqueFuentes);
 
             filteredData.forEach(row => {
                 const total = parseFloat(row['Total General']) || 0;
@@ -220,7 +230,10 @@ export function DashboardPage() {
                     const n = parseInt(row['Noches']) || 1;
                     const p = (parseInt(row['Adultos']) || 0) + (parseInt(row['Niños']) || 0) || 1;
                     const roomRevenue = parseFloat((row['Total Hab.'] || '0').toString().replace(/[$,]/g, '')) || 0;
-                    const isComp = (row['Fuente'] || '').toString().toLowerCase() === 'complementary';
+                    const isComp = (() => {
+                        const fuente = (row['Fuente'] || row['fuente'] || '').toString().toLowerCase().trim();
+                        return fuente.includes('comp') || fuente.includes('cortesia') || fuente.includes('cortesía') || fuente === 'gratis' || fuente === 'house use' || fuente === 'house';
+                    })();
 
                     totalRoomRevenue += roomRevenue;
                     totalRoomCount += rc;
@@ -233,6 +246,7 @@ export function DashboardPage() {
                         compRoomNightsCount += (rc * n);
                         compTotalRooms += rc;
                         compTotalPax += p;
+                        compList.push(row);
                     } else {
                         paidRoomNightsCount += (rc * n);
                     }
@@ -321,6 +335,8 @@ export function DashboardPage() {
                 compTotalRooms: compTotalRooms,
                 compTotalPax: compTotalPax
             });
+
+            setCompReservations(compList);
 
             setCriticalReservations(critical);
             setChartData(formattedChartData);
@@ -524,6 +540,18 @@ export function DashboardPage() {
                     icon={<ArrowDownRight className="w-4 h-4" />}
                     color="amber"
                     label={`${(stats.compRoomNights / (stats.compRoomNights + stats.paidRoomNights || 1) * 100).toFixed(1)}% de la ocupación mensual`}
+                    onClick={() => {
+                        const compRevenue = compReservations.reduce((sum, r) => sum + (parseFloat((r['Total Hab.'] || r['Total General'] || '0').toString().replace(/[$,]/g, '')) || 0), 0);
+                        const compPaid = compReservations.reduce((sum, r) => sum + (parseFloat((r['Monto Pagado'] || '0').toString().replace(/[$,]/g, '')) || 0), 0);
+                        const compPending = compReservations.reduce((sum, r) => sum + (parseFloat((r['Saldo Pendiente'] || '0').toString().replace(/[$,]/g, '')) || 0), 0);
+                        setSelectedSourceDetail({
+                            name: 'Habitaciones de Cortesía',
+                            rows: compReservations,
+                            revenue: compRevenue,
+                            paid: compPaid,
+                            pending: compPending
+                        });
+                    }}
                 />
                 <CompactStatCard 
                     title="RevPAR" 
@@ -1180,6 +1208,9 @@ export function DashboardPage() {
                                 if (!row) return null;
                                 const resId = (row['Numero de la reserva'] || row['ID de la reserva'] || 'N/A').toString();
                                 const room = row['Numero de habitacion'] || 'Sin Hab.';
+                                const guestName = row['Nombre'] || row['Huesped'] || row['nombre'] || 'Sin Nombre';
+                                const checkin = row['Fecha de llegada'] || row['fecha_de_llegada'] || row['Check In'] || 'N/A';
+                                const checkout = row['Salida'] || row['fecha_de_salida'] || row['Check Out'] || 'N/A';
                                 const ads = parseInt(row['Adultos']) || 0;
                                 const kds = parseInt(row['Niños']) || 0;
                                 const status = (row['Estado de la Reserva'] || 'Confirmada').toString();
@@ -1187,11 +1218,86 @@ export function DashboardPage() {
                                 const pd = parseFloat((row['Total Pagado'] || '0').toString().replace(/[$,]/g, '')) || 0;
                                 const pen = rev - pd;
 
+                                const formatDisplayDate = (dateStr: string) => {
+                                    if (dateStr === 'N/A' || !dateStr) return 'N/A';
+                                    try {
+                                        const date = new Date(dateStr);
+                                        if (isNaN(date.getTime())) return dateStr;
+                                        const day = String(date.getDate()).padStart(2, '0');
+                                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                                        const year = date.getFullYear();
+                                        return `${day}/${month}/${year}`;
+                                    } catch {
+                                        return dateStr;
+                                    }
+                                };
+
+                                const handlePrint = () => {
+                                    const printWindow = window.open('', '_blank');
+                                    if (printWindow) {
+                                        printWindow.document.write(`
+                                            <html>
+                                            <head>
+                                                <title>Reserva ${resId}</title>
+                                                <style>
+                                                    body { font-family: Arial, sans-serif; padding: 20px; }
+                                                    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+                                                    .section { margin-bottom: 15px; }
+                                                    .label { font-weight: bold; color: #666; }
+                                                    .value { margin-left: 5px; }
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="header">
+                                                    <h2>Detalle de Reserva</h2>
+                                                    <p>Localizador: ${resId}</p>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Huésped:</span>
+                                                    <span class="value">${guestName}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Habitación:</span>
+                                                    <span class="value">${room}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Check-in:</span>
+                                                    <span class="value">${formatDisplayDate(checkin)}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Check-out:</span>
+                                                    <span class="value">${formatDisplayDate(checkout)}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Pax:</span>
+                                                    <span class="value">${ads + kds} (${ads} adultos / ${kds} niños)</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Estado:</span>
+                                                    <span class="value">${status}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Total Habitación:</span>
+                                                    <span class="value">${formatCurrency(rev)}</span>
+                                                </div>
+                                                <div class="section">
+                                                    <span class="label">Pagado:</span>
+                                                    <span class="value">${formatCurrency(pd)}</span>
+                                                </div>
+                                                ${pen > 0 ? `<div class="section"><span class="label">Pendiente:</span><span class="value">${formatCurrency(pen)}</span></div>` : ''}
+                                            </body>
+                                            </html>
+                                        `);
+                                        printWindow.document.close();
+                                        printWindow.print();
+                                    }
+                                };
+
                                 return (
                                     <div key={idx} className="bg-brand-900/80 border border-brand-800 rounded-2xl p-4 hover:border-blue-500/30 transition-all">
                                         <div className="flex justify-between items-start">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
+                                            <div className="space-y-2 flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
                                                     <span className="text-white font-black text-sm bg-blue-600/20 px-2 py-0.5 rounded border border-blue-500/30">
                                                         Loc: {resId}
                                                     </span>
@@ -1202,7 +1308,21 @@ export function DashboardPage() {
                                                     }`}>
                                                         {status}
                                                     </span>
+                                                    <button
+                                                        onClick={handlePrint}
+                                                        className="ml-auto p-1.5 hover:bg-blue-500/20 rounded-lg transition-colors group"
+                                                        title="Imprimir"
+                                                    >
+                                                        <Printer className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
+                                                    </button>
                                                 </div>
+                                                
+                                                {/* Guest Name */}
+                                                <div className="flex items-center gap-2 text-white">
+                                                    <User className="w-3.5 h-3.5 text-blue-400" />
+                                                    <span className="text-xs font-semibold">{guestName}</span>
+                                                </div>
+
                                                 <div className="flex items-center gap-3 text-brand-400 mt-2">
                                                     <div className="flex items-center gap-1">
                                                         <Hotel className="w-3 h-3 text-blue-400" />
@@ -1214,8 +1334,20 @@ export function DashboardPage() {
                                                         <span className="text-xs font-bold">{ads + kds} Pax ({ads}/{kds})</span>
                                                     </div>
                                                 </div>
+
+                                                {/* Check-in / Check-out */}
+                                                <div className="flex items-center gap-4 text-brand-400 mt-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <LogIn className="w-3 h-3 text-emerald-400" />
+                                                        <span className="text-xs font-medium">Entrada: {formatDisplayDate(checkin)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <LogOut className="w-3 h-3 text-amber-400" />
+                                                        <span className="text-xs font-medium">Salida: {formatDisplayDate(checkout)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-right space-y-1">
+                                            <div className="text-right space-y-1 ml-4">
                                                 <p className="text-sm font-black text-white">{formatCurrency(rev)}</p>
                                                 <div className="flex flex-col gap-0.5">
                                                     <p className="text-[9px] font-bold text-emerald-500">PAG: {formatCurrency(pd)}</p>
@@ -1261,7 +1393,7 @@ export function DashboardPage() {
     );
 }
 
-function CompactStatCard({ title, value, icon, color, label }: any) {
+function CompactStatCard({ title, value, icon, color, label, onClick }: any) {
     const colorClasses: any = {
         emerald: 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5',
         blue: 'border-blue-500/20 text-blue-400 bg-blue-500/5',
@@ -1271,7 +1403,9 @@ function CompactStatCard({ title, value, icon, color, label }: any) {
     };
 
     return (
-        <div className={`flex flex-col p-3 rounded-xl border backdrop-blur-md transition-all duration-300 hover:bg-brand-800/40 ${colorClasses[color] || 'border-brand-800 bg-brand-900/40'}`}>
+        <div 
+            onClick={onClick}
+            className={`flex flex-col p-3 rounded-xl border backdrop-blur-md transition-all duration-300 hover:bg-brand-800/40 ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''} ${colorClasses[color] || 'border-brand-800 bg-brand-900/40'}`}>
             <div className="flex items-center gap-2 mb-1.5">
                 <div className="p-1 rounded-lg bg-brand-800 border border-brand-700/50">
                     {React.cloneElement(icon as React.ReactElement, { className: "w-3.5 h-3.5" })}
