@@ -537,9 +537,6 @@ export function DashboardPage() {
                             <div className="space-y-4">
                                 <h4 className="text-[10px] font-bold text-brand-500 uppercase tracking-[0.2em] pl-1">Distribución por Fuente</h4>
                                 {Object.entries(selectedPaxDetail.sources).map(([source, data]: [string, any]) => {
-                                    const statusStr = (data.status || 'Confirmada').toString().toUpperCase();
-                                    const isPending = statusStr.includes('PENDIENTE');
-                                    
                                     // Calcular cantidad de habitaciones únicas
                                     const uniqueRooms = new Set();
                                     data.rows.forEach((r: any) => {
