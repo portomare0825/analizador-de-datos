@@ -338,15 +338,26 @@ export function DashboardPage() {
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
-                        <div className="flex items-baseline gap-4">
-                            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-100 to-brand-400 uppercase tracking-tight">
-                                Dashboard de Ocupación
-                            </h1>
-                            <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
-                                {hotel.toLowerCase().includes('plus') ? 'Hotel Plus' : 'Hotel Palm'}
-                            </span>
+                        <div className="flex items-center gap-6">
+                            <div className="flex flex-col">
+                                <h1 className="text-4xl font-serif font-bold text-white tracking-tight leading-tight">
+                                    Dashboard de <span className="italic font-normal text-brand-300">Ocupación</span>
+                                </h1>
+                                <div className="h-0.5 w-12 bg-brand-400/50 mt-1 rounded-full"></div>
+                            </div>
+                            
+                            <div className="flex flex-col border-l border-brand-800/50 pl-6">
+                                <span className="text-[11px] font-sans font-bold text-brand-400 uppercase tracking-[0.5em] mb-0.5 opacity-80">
+                                    Propiedad Seleccionada
+                                </span>
+                                <span className="text-lg font-serif italic text-white/90">
+                                    {hotel.toLowerCase().includes('plus') ? "LD' Plus" : "LD' Palm Beach"}
+                                </span>
+                            </div>
                         </div>
-                        <p className="text-brand-400 mt-1 font-medium italic text-sm">Visualización de métricas y proyecciones para {hotel === 'plus' ? "LD' Plus" : "LD' Palm Beach"}</p>
+                        <p className="text-brand-300/70 mt-3 font-sans font-medium text-sm max-w-2xl">
+                            Análisis estratégico de métricas operativas y proyecciones de ingresos para la gestión hotelera.
+                        </p>
                     </div>
                 <div className="flex items-center gap-3">
                     <div className="flex bg-brand-900/50 border border-brand-800 rounded-xl p-1">
