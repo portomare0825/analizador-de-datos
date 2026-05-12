@@ -1767,7 +1767,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             {/* ... Footer ... */}
                                             <tfoot className="bg-brand-800/90 sticky bottom-0 backdrop-blur-sm z-10 border-t border-brand-600 shadow-lg">
                                                 <tr>
-                                                    <td colSpan={2} className="px-6 py-4 text-left font-mono font-medium text-white/70 uppercase tracking-[0.4em] text-[9px] whitespace-nowrap">
+                                                    <td colSpan={2} className="px-6 py-4 text-left font-mono font-bold text-brand-400 uppercase tracking-[0.4em] text-[13px] whitespace-nowrap opacity-90">
                                                         {hotelDisplayName}
                                                     </td>
                                                     <td colSpan={3} className="px-3 py-4 text-right font-bold text-brand-400 uppercase tracking-wider text-xl">
