@@ -253,6 +253,7 @@ export function DashboardPage() {
                 const dateObj = new Date(dateStr + 'T12:00:00');
                 return {
                     name: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    weekday: dateObj.toLocaleDateString('es-ES', { weekday: 'short' }),
                     dateStr: dateStr,
                     fullDate: dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }),
                     adults: adultsByDate[dateStr] || 0,
@@ -323,14 +324,19 @@ export function DashboardPage() {
     if (loading) return <div className="h-full flex items-center justify-center bg-brand-950"><Spinner /></div>;
 
     return (
-        <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
+        <>
             <style>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .recharts-wrapper, .recharts-wrapper *:focus, .recharts-wrapper *:active { outline: none !important; border: none !important; }
+                .recharts-surface { outline: none !important; border: none !important; }
+                svg, svg *:focus, svg *:active { outline: none !important; border: none !important; }
+                .recharts-cartesian-grid-horizontal line, .recharts-cartesian-grid-vertical line { stroke: #1f2937; }
             `}</style>
             
-            {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
+                {/* Header */}
+                <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-brand-400 bg-clip-text text-transparent">
                         Panel de Resumen - LD {hotel === 'plus' ? 'Plus' : 'Palm'}
@@ -411,18 +417,49 @@ export function DashboardPage() {
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart 
                             data={paxData} 
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', border: 'none', outline: 'none', background: 'transparent' }}
                             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                            onClick={(state) => {
+                            onClick={(state: any) => {
                                 if (state && state.activePayload && state.activePayload.length > 0) {
                                     setSelectedPaxDetail(state.activePayload[0].payload);
                                 }
                             }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={(props: any) => {
+                                    const { x, y, payload } = props;
+                                    const data = paxData[payload.index];
+                                    return (
+                                        <g transform={`translate(${x},${y})`}>
+                                            <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={12} fontWeight="bold">
+                                                {payload.value}
+                                            </text>
+                                            <text x={0} y={0} dy={32} textAnchor="middle" fill="#38bdf8" fontSize={11} fontWeight="600" className="capitalize">
+                                                {data?.weekday}
+                                            </text>
+                                        </g>
+                                    );
+                                }} 
+                                height={60}
+                            />
                             <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
-                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} isAnimationActive={false} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}} 
+                                isAnimationActive={false}
+                                contentStyle={{
+                                    backgroundColor: '#06201b',
+                                    border: '1px solid #164d42',
+                                    borderRadius: '16px',
+                                    padding: '12px',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
+                                }}
+                                itemStyle={{ padding: '2px 0' }}
+                                labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '8px', fontSize: '12px' }}
+                            />
                             <Bar 
                                 dataKey="adults" 
                                 name="Adultos" 
@@ -694,7 +731,7 @@ export function DashboardPage() {
             {selectedSourceDetail && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-brand-950/95 backdrop-blur-2xl" onClick={() => setSelectedSourceDetail(null)} />
-                    <div className="relative w-full max-w-3xl bg-[#082b24] border border-[#164d42] rounded-[40px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh]">
+                    <div className="relative w-full max-w-xl bg-[#082b24] border border-[#164d42] rounded-[40px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh]">
                         {/* Header */}
                         <div className="p-8 pb-4 border-b border-[#164d42]/30">
                             <div className="flex justify-between items-start mb-2">
@@ -708,6 +745,35 @@ export function DashboardPage() {
                             </div>
                             <h3 className="text-4xl font-black text-white mb-1 tracking-tight">{selectedSourceDetail.name}</h3>
                             <p className="text-sm font-medium text-brand-500 uppercase tracking-wide">Total de {selectedSourceDetail.rows.length} registros encontrados</p>
+                            
+                            {/* Resumen de Pax */}
+                            <div className="flex gap-2 mt-3">
+                                {(() => {
+                                    const tA = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Adultos']) || 0), 0);
+                                    const tK = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Niños']) || 0), 0);
+                                    
+                                    const uniqueRooms = new Set();
+                                    selectedSourceDetail.rows.forEach((r: any) => {
+                                        const rooms = (r['Numero de habitacion'] || '').toString().split(',').map((s: string) => s.trim()).filter(Boolean);
+                                        rooms.forEach((room: string) => uniqueRooms.add(room));
+                                    });
+                                    const totalRooms = uniqueRooms.size;
+
+                                    return (
+                                        <>
+                                            <div className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[9px] font-black text-blue-300 uppercase tracking-widest">
+                                                {tA} ADULTOS
+                                            </div>
+                                            <div className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-black text-emerald-300 uppercase tracking-widest">
+                                                {tK} NIÑOS
+                                            </div>
+                                            <div className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[9px] font-black text-amber-100 uppercase tracking-widest">
+                                                {totalRooms} {totalRooms === 1 ? 'HABITACIÓN' : 'HABITACIONES'}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
                         {/* Body - Reservation Cards */}
@@ -744,7 +810,7 @@ export function DashboardPage() {
                                                         </div>
                                                         <div className="flex items-center gap-2.5 text-brand-300/70">
                                                             <Users className="w-4 h-4 text-brand-500" />
-                                                            <span className="text-xs font-bold tracking-tight">{row['Pax Total']} Pax ({row['Adultos']}/{row['Ninos']})</span>
+                                                            <span className="text-xs font-bold tracking-tight">{row['Pax Total']} Pax ({row['Adultos']}/{row['Niños']})</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-6">
@@ -797,6 +863,7 @@ export function DashboardPage() {
                 </div>
             )}
         </div>
+        </>
     );
 }
 
