@@ -1815,6 +1815,17 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                 <PencilSquareIcon className="w-5 h-5 text-brand-400" />
                                 Confirmar Tasas Manuales
                             </h3>
+
+                            <div className="hidden sm:flex flex-col items-center justify-center">
+                                {selectedRow['Fuente'] && (
+                                    <span className="text-[10px] uppercase tracking-wider text-brand-400 font-bold leading-tight">
+                                        {selectedRow['Fuente']}
+                                    </span>
+                                )}
+                                <span className="text-sm font-medium text-brand-50 truncate max-w-[250px] leading-tight text-center">
+                                    {selectedRow['Nombre'] || selectedRow['Huesped'] || 'Sin Nombre'}
+                                </span>
+                            </div>
                             <button
                                 onClick={() => setIsRateModalOpen(false)}
                                 className="text-brand-400 hover:text-white transition-colors"
