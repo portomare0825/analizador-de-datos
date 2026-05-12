@@ -13,6 +13,7 @@ import { CloseIcon } from './icons/CloseIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
 import { fetchNotes, fetchTransactions, copyTransactionsToNotes, fetchAccountNotes, fetchNotesFromView, updateAccountNotesRate, updateNoteRate, deleteAccountNote, saveInvoice, executeDatabaseQuery } from '../services/supabaseService';
+import { useHotel } from '../contexts/HotelContext';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { BuildingOfficeIcon } from './icons/BuildingOfficeIcon';
 import { HashtagIcon } from './icons/HashtagIcon';
@@ -219,10 +220,17 @@ const SourceDropdown: React.FC<SourceDropdownProps> = ({ options, selected, onCh
 };
 
 export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHeaderMap, hideNotes = false, hideTransactions = false, notesSourceView, useAccountNotes = false, onDataChange, hotelSource, onEditRow, onDeleteRow }) => {
+    const { hotel: globalHotel } = useHotel();
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedRow, setSelectedRow] = useState<DataRow | null>(null);
     const lastSelectedRowId = React.useRef<string | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+    // Lógica robusta para determinar el nombre del hotel
+    const isPlus = hotelSource 
+        ? hotelSource.toLowerCase().includes('plus') 
+        : globalHotel === 'plus';
+    const hotelDisplayName = isPlus ? 'Hotel Plus' : 'Hotel Palm';
 
     // State for notes and transactions
     const [notes, setNotes] = useState<any[]>([]);
@@ -1602,8 +1610,11 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             ) : (
                                                 <tr>
                                                     <td colSpan={2} className="px-3 py-4 align-top">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-2">
+                                                        <div className="flex items-center justify-between h-full">
+                                                            <div className="text-left font-mono font-medium text-white/70 uppercase tracking-[0.4em] text-[9px] self-end pb-1 whitespace-nowrap">
+                                                                {hotelDisplayName}
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2 self-end">
                                                                 <button
                                                                     onClick={handleOpenInvoiceModal}
                                                                     className="flex items-center gap-2 px-3 py-1.5 bg-brand-700/80 rounded-lg shadow-sm border border-brand-600 hover:bg-brand-600 transition-all cursor-pointer group"
@@ -1612,10 +1623,10 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                                     <CalculatorIcon className="w-4 h-4 text-brand-300 group-hover:text-white" />
                                                                     <span className="text-xs font-semibold text-brand-200 group-hover:text-white">Factura</span>
                                                                 </button>
+                                                                <span className="font-bold text-brand-400 uppercase tracking-wider text-xl">
+                                                                    TOTALES
+                                                                </span>
                                                             </div>
-                                                            <span className="font-bold text-brand-400 uppercase tracking-wider text-xl">
-                                                                TOTALES
-                                                            </span>
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-4 text-right font-bold text-white text-3xl align-top whitespace-nowrap">
@@ -1756,7 +1767,10 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             {/* ... Footer ... */}
                                             <tfoot className="bg-brand-800/90 sticky bottom-0 backdrop-blur-sm z-10 border-t border-brand-600 shadow-lg">
                                                 <tr>
-                                                    <td colSpan={5} className="px-3 py-4 text-right font-bold text-brand-400 uppercase tracking-wider text-xl">
+                                                    <td colSpan={2} className="px-6 py-4 text-left font-mono font-medium text-white/70 uppercase tracking-[0.4em] text-[9px] whitespace-nowrap">
+                                                        {hotelDisplayName}
+                                                    </td>
+                                                    <td colSpan={3} className="px-3 py-4 text-right font-bold text-brand-400 uppercase tracking-wider text-xl">
                                                         TOTALES
                                                     </td>
                                                     <td className="px-3 py-4 text-right font-bold text-white text-xl whitespace-nowrap">
@@ -2041,7 +2055,11 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                         </div>
 
                         {/* Footer */}
-                        <div className="px-6 py-4 border-t border-brand-800 bg-brand-800/50 rounded-b-2xl flex justify-end gap-3">
+                        <div className="px-6 py-4 border-t border-brand-800 bg-brand-800/50 rounded-b-2xl flex justify-between items-center">
+                            <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
+                                {hotelDisplayName}
+                            </span>
+                            <div className="flex gap-3">
                             <button
                                 onClick={() => setIsRateModalOpen(false)}
                                 className="px-4 py-2 bg-brand-800 hover:bg-brand-700 text-brand-200 font-semibold rounded-lg transition-colors"
@@ -2062,6 +2080,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                     </>
                                 )}
                             </button>
+                            </div>
                         </div>
                     </div>
                 </div>,
@@ -2073,9 +2092,14 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                 // ... Edit Rate Modal ...
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-brand-950/90 backdrop-blur-md p-4 animate-fade-in">
                     <div className="bg-brand-900 border border-brand-700 rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <PencilSquareIcon className="w-5 h-5 text-brand-400" />
-                            {editingNoteId ? 'Editar Tasa de Nota' : 'Editar Tasa de Cambio'}
+                        <h3 className="text-lg font-bold text-white flex items-center gap-3 mb-4">
+                            <span className="flex items-center gap-2">
+                                <PencilSquareIcon className="w-5 h-5 text-brand-400" />
+                                {editingNoteId ? 'Editar Tasa de Nota' : 'Editar Tasa de Cambio'}
+                            </span>
+                            <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90 translate-y-[1px]">
+                                {hotelDisplayName}
+                            </span>
                         </h3>
                         <p className="text-brand-300 text-sm mb-6 leading-relaxed">
                             {editingNoteId
@@ -2135,9 +2159,14 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                 // ... Delete Modal ...
                 <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-brand-950/90 backdrop-blur-md p-4 animate-fade-in">
                     <div className="bg-brand-900 border border-brand-700 rounded-xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <TrashIcon className="w-5 h-5 text-red-500" />
-                            Eliminar Nota
+                        <h3 className="text-lg font-bold text-white flex items-center gap-3 mb-4">
+                            <span className="flex items-center gap-2">
+                                <TrashIcon className="w-5 h-5 text-red-500" />
+                                Eliminar Nota
+                            </span>
+                            <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90 translate-y-[1px]">
+                                {hotelDisplayName}
+                            </span>
                         </h3>
                         <p className="text-brand-300 text-sm mb-6 leading-relaxed">
                             ¿Estás seguro de que deseas eliminar esta nota? Esta acción no se puede deshacer.

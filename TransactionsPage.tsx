@@ -500,9 +500,14 @@ export function TransactionsPage() {
                                 <div className="p-2 bg-brand-800 rounded-lg">
                                     <BanknotesIcon className="w-8 h-8 text-brand-400" />
                                 </div>
-                                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
-                                    Carga de Transacciones
-                                </h1>
+                                <div className="flex items-baseline gap-3">
+                                    <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
+                                        Carga de Transacciones
+                                    </h1>
+                                    <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
+                                        {hotel.toLowerCase().includes('plus') ? 'Hotel Plus' : 'Hotel Palm'}
+                                    </span>
+                                </div>
                             </div>
                             <p className="text-brand-300 text-lg">
                                 Sube tus archivos de transacciones para sincronizarlos con la base de datos central.

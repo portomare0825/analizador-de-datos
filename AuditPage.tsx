@@ -730,11 +730,16 @@ export function AuditPage() {
         <div className="w-full flex flex-col items-center p-4 sm:p-6 lg:p-8 font-sans">
             <div className="w-full max-w-7xl mx-auto">
                 <header ref={headerRef} className="text-center mb-8">
-                    <div className="flex items-center justify-center gap-3 mb-2">
-                        <SparklesIcon className="w-8 h-8 text-brand-400" />
-                        <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
-                            Auditoria de Ingresos, LD' Hoteles
-                        </h1>
+                    <div className="flex items-baseline justify-center gap-4 mb-2">
+                        <div className="flex items-center gap-3">
+                            <SparklesIcon className="w-8 h-8 text-brand-400" />
+                            <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
+                                Auditoria de Ingresos
+                            </h1>
+                        </div>
+                        <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90 translate-y-[-4px]">
+                            {appState.detectedHotelType === 'Palm' || activeTable === TABLE_PALM ? 'Hotel Palm' : 'Hotel Plus'}
+                        </span>
                     </div>
                     <p className="text-lg text-brand-300">
                         Sube, filtra y audita tus datos para una conciliación precisa.

@@ -337,12 +337,17 @@ export function DashboardPage() {
             <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
                 {/* Header */}
                 <div className="flex justify-between items-start">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-brand-400 bg-clip-text text-transparent">
-                        Panel de Resumen - LD {hotel === 'plus' ? 'Plus' : 'Palm'}
-                    </h1>
-                    <p className="text-brand-400 mt-1">Vista general del desempeño y auditoría de ingresos</p>
-                </div>
+                    <div>
+                        <div className="flex items-baseline gap-4">
+                            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-100 to-brand-400 uppercase tracking-tight">
+                                Dashboard de Ocupación
+                            </h1>
+                            <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
+                                {hotel.toLowerCase().includes('plus') ? 'Hotel Plus' : 'Hotel Palm'}
+                            </span>
+                        </div>
+                        <p className="text-brand-400 mt-1 font-medium italic text-sm">Visualización de métricas y proyecciones para {hotel === 'plus' ? "LD' Plus" : "LD' Palm Beach"}</p>
+                    </div>
                 <div className="flex items-center gap-3">
                     <div className="flex bg-brand-900/50 border border-brand-800 rounded-xl p-1">
                         <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="bg-transparent text-sm font-semibold px-3 py-1 outline-none cursor-pointer">
@@ -540,7 +545,12 @@ export function DashboardPage() {
                                 </div>
                                 <button onClick={() => setSelectedPaxDetail(null)} className="p-2 hover:bg-[#166658] rounded-full transition-colors text-white/80"><X className="w-6 h-6" /></button>
                             </div>
-                            <h3 className="text-4xl font-black text-white">{selectedPaxDetail.fullDate}</h3>
+                            <div className="flex items-baseline gap-3">
+                                <h3 className="text-4xl font-black text-white leading-tight">{selectedPaxDetail.fullDate}</h3>
+                                <span className="text-[13px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
+                                    {hotel.toLowerCase().includes('plus') ? 'Hotel Plus' : 'Hotel Palm'}
+                                </span>
+                            </div>
                             <div className="flex flex-wrap gap-3">
                                 <div className="px-5 py-2.5 bg-[#166658] border border-[#1d7a6a] rounded-2xl flex items-center gap-3">
                                     <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
@@ -655,22 +665,15 @@ export function DashboardPage() {
                         {/* Header */}
                         <div className="p-8 pb-6 border-b border-[#164d42]/30 flex justify-between items-start">
                             <div>
-                                <div className="flex gap-2 mb-3">
-                                    <div className="px-3 py-1 bg-brand-500/10 rounded-lg inline-flex items-center gap-2 border border-brand-500/20">
-                                        <Info className="w-3.5 h-3.5 text-brand-400" />
-                                        <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest">Detalle Individual</span>
-                                    </div>
-                                    {selectedReservation['Fuente'] && (
-                                        <div className="px-3 py-1 bg-amber-500/10 rounded-lg inline-flex items-center gap-2 border border-amber-500/20">
-                                            <Tag className="w-3.5 h-3.5 text-amber-400" />
-                                            <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest">{selectedReservation['Fuente']}</span>
-                                        </div>
-                                    )}
+                                <div className="flex items-baseline gap-3">
+                                    <h3 className="text-3xl font-black text-white tracking-tight uppercase">Detalle de Reserva</h3>
+                                    <span className="text-[11px] font-mono font-bold text-brand-400 uppercase tracking-[0.4em] whitespace-nowrap opacity-90">
+                                        {hotel.toLowerCase().includes('plus') ? 'Hotel Plus' : 'Hotel Palm'}
+                                    </span>
                                 </div>
-                                <h3 className="text-3xl font-black text-white leading-tight">{selectedReservation['Nombre'] || 'Sin Nombre'}</h3>
-                                <p className="text-sm font-bold text-brand-500 mt-1 uppercase tracking-widest font-mono">#{selectedReservation['Numero de la reserva']}</p>
+                                <span className="text-brand-500 font-bold text-sm tracking-widest">#{selectedReservation['Numero de la reserva']}</span>
                             </div>
-                            <button onClick={() => setSelectedReservation(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/40 hover:text-white"><X className="w-6 h-6" /></button>
+                            <button onClick={() => setSelectedReservation(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/40 hover:text-white"><X className="w-6 h-6" /></button>
                         </div>
 
                         {/* Body */}
