@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
-import { SparklesIcon } from './components/icons/SparklesIcon';
+import { CalculatorIcon } from './components/icons/CalculatorIcon';
 
 export function LoginPage() {
     const [email, setEmail] = useState('');
@@ -29,6 +29,13 @@ export function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-brand-950 p-6 relative overflow-hidden">
+            {/* Imagen de fondo contable con degradado */}
+            <div
+                className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-overlay"
+                style={{ backgroundImage: "url('/login-bg.png')" }}
+            ></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-950 via-transparent to-brand-950 pointer-events-none"></div>
+
             {/* Círculos de fondo decorativos */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px]"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]"></div>
@@ -36,10 +43,10 @@ export function LoginPage() {
             <div className="w-full max-w-md animate-fade-in-up">
                 {/* Logo Container */}
                 <div className="flex flex-col items-center mb-8">
-                    <div className="bg-brand-900/50 p-4 rounded-3xl border border-brand-800 backdrop-blur-xl mb-4 shadow-2xl shadow-brand-500/10">
-                        <SparklesIcon className="w-12 h-12 text-brand-400" />
+                    <div className="mb-4 shadow-2xl shadow-brand-500/10">
+                        <img src="/logo.png" alt="Logo Auditoria LD" className="w-20 h-20 object-contain rounded-3xl border border-brand-800" />
                     </div>
-                    <h1 className="text-3xl font-black text-white tracking-tight">AUDITORIA LD <span className="text-brand-400">HOTELES</span></h1>
+                    <h1 className="text-2xl font-mono font-bold text-white tracking-tight">AUDITORIA LD <span className="text-brand-400">HOTELES</span></h1>
                 </div>
 
                 {/* Form Card */}
