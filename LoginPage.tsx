@@ -39,8 +39,7 @@ export function LoginPage() {
                     <div className="bg-brand-900/50 p-4 rounded-3xl border border-brand-800 backdrop-blur-xl mb-4 shadow-2xl shadow-brand-500/10">
                         <SparklesIcon className="w-12 h-12 text-brand-400" />
                     </div>
-                    <h1 className="text-3xl font-black text-white tracking-tight">AUDITORI <span className="text-brand-400">LD</span></h1>
-                    <p className="text-brand-400 font-medium text-sm mt-1 uppercase tracking-[0.2em]">Analytics & Intelligence</p>
+                    <h1 className="text-3xl font-black text-white tracking-tight">AUDITORIA LD <span className="text-brand-400">HOTELES</span></h1>
                 </div>
 
                 {/* Form Card */}
