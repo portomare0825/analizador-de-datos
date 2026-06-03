@@ -14,6 +14,9 @@ dist-ssr
 
 # Build artifacts
 release
+release_v2
+release_v3
+release_old
 release (1)
 release (1)/
 dist-electron

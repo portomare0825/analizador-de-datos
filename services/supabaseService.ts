@@ -120,6 +120,8 @@ export const sendDataToSupabase = async (
             let errorObj: any = null;
 
             if (conflictKey) {
+                console.log("[sendDataToSupabase] Columnas enviadas en el registro de ejemplo:", Object.keys(chunk[0] || {}));
+                console.log("[sendDataToSupabase] Registro ejemplo:", chunk[0]);
                 // Upsert: Intenta Insertar, si hay conflicto en `conflictKey`, hace Update.
                 const { error } = await supabase
                     .from(tableName)

@@ -91,6 +91,10 @@ export const DatabaseSync: React.FC<DatabaseSyncProps> = ({
             const normalized = normalizeKey(appKey);
             if (normalized === 'estado_1' || normalized === 'estado_de_la_habitacion') return null;
 
+            if (appKey === 'Fecha de llegada' || normalized === 'fecha_de_llegada' || normalized === 'fecha_del_checkin') {
+                return 'fecha_de_llegada';
+            }
+
             if (appKey === 'Estado de la Reserva') return 'estado_de_la_reserva';
             if (normalized === 'estado') return 'estado_de_la_reserva';
             if (normalized === 'estadodelareserva') return 'estado_de_la_reserva';
