@@ -1,0 +1,36 @@
+--- INICIO DIAGNÓSTICO ---
+[STDOUT] 
+
+[STDOUT] Checking for update
+
+[STDERR] (electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+
+[STDOUT] [RENDERER CONSOLE] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation (at https://cdn.tailwindcss.com/:64)
+
+[STDOUT] Update for version 1.1.19 is not available (latest version: 1.1.19, downgrade is disallowed).
+
+[STDOUT] checkForUpdatesAndNotify called, downloadPromise is null
+
+
+ERROR DEL PROCESO:
+Error: Command failed: C:\Users\adm-09\Desktop\Geminis\Antigravity\analizador-de-datos\release\win-unpacked\Auditoría de Ingresos.exe
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:519:28)
+    at maybeClose (node:internal/child_process:1101:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+
+STDOUT FINAL:
+
+Checking for update
+[RENDERER CONSOLE] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation (at https://cdn.tailwindcss.com/:64)
+Update for version 1.1.19 is not available (latest version: 1.1.19, downgrade is disallowed).
+checkForUpdatesAndNotify called, downloadPromise is null
+
+
+STDERR FINAL:
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+

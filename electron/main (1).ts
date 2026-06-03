@@ -32,11 +32,6 @@ function createWindow() {
   // Quitar el menú por defecto para una apariencia más limpia
   win.setMenuBarVisibility(false);
 
-  // Redirigir logs de consola de React al proceso principal para depuración
-  win.webContents.on('console-message', (event, level, message, line, sourceId) => {
-    console.log(`[RENDERER CONSOLE] ${message} (at ${sourceId}:${line})`);
-  });
-
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {

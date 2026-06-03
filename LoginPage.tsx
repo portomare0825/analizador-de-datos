@@ -30,9 +30,9 @@ export function LoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-brand-950 p-6 relative overflow-hidden">
             {/* Imagen de fondo contable con degradado */}
-            <div
+            <div 
                 className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-overlay"
-                style={{ backgroundImage: "url('/login-bg.png')" }}
+                style={{ backgroundImage: "url('login-bg.png')" }}
             ></div>
             <div className="absolute inset-0 bg-gradient-to-b from-brand-950 via-transparent to-brand-950 pointer-events-none"></div>
 
@@ -44,7 +44,7 @@ export function LoginPage() {
                 {/* Logo Container */}
                 <div className="flex flex-col items-center mb-8">
                     <div className="mb-4 shadow-2xl shadow-brand-500/10">
-                        <img src="/logo.png" alt="Logo Auditoria LD" className="w-20 h-20 object-contain rounded-3xl border border-brand-800" />
+                        <img src="logo.png" alt="Logo Auditoria LD" className="w-20 h-20 object-contain rounded-3xl border border-brand-800" />
                     </div>
                     <h1 className="text-2xl font-mono font-bold text-white tracking-tight">AUDITORIA LD <span className="text-brand-400">HOTELES</span></h1>
                 </div>

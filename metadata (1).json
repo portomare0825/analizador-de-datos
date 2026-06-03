@@ -1,0 +1,5 @@
+{
+  "name": "Analizador de Datos",
+  "description": "Sube un archivo Excel o CSV para visualizar, filtrar y obtener un análisis profundo de tus datos con el poder de Gemini. Descubre tendencias y conclusiones clave en segundos.",
+  "requestFramePermissions": []
+}
