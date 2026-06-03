@@ -14,7 +14,10 @@ dist-ssr
 
 # Build artifacts
 release
+release (1)
+release (1)/
 dist-electron
+
 
 # Editor directories and files
 .vscode/*
