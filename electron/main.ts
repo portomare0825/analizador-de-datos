@@ -3,6 +3,15 @@ import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Deshabilitar aceleración por hardware para evitar fallos de GPU en ciertos entornos
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-rasterization');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('no-sandbox');
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Estructura de directorios generada
