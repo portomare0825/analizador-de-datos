@@ -8,6 +8,8 @@ interface AuthContextType {
     profile: any | null;
     loading: boolean;
     isAdmin: boolean;
+    isRecovering: boolean;
+    setIsRecovering: (val: boolean) => void;
     signOut: () => Promise<void>;
 }
 
@@ -17,6 +19,8 @@ const AuthContext = createContext<AuthContextType>({
     profile: null,
     loading: true,
     isAdmin: false,
+    isRecovering: false,
+    setIsRecovering: () => { },
     signOut: async () => { },
 });
 
@@ -25,8 +29,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isRecovering, setIsRecovering] = useState(false);
 
     useEffect(() => {
+        // Comprobar si el hash de la URL contiene parámetros de invitación o recuperación
+        const hash = window.location.hash;
+        if (hash && (hash.includes('type=invite') || hash.includes('type=signup') || hash.includes('type=recovery'))) {
+            setIsRecovering(true);
+        }
+
         // 1. Obtener sesión inicial
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
@@ -36,7 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         // 2. Escuchar cambios en auth
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsRecovering(true);
+            }
+
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) fetchProfile(session.user.id);
@@ -73,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isAdmin = profile?.role === 'admin';
 
     return (
-        <AuthContext.Provider value={{ session, user, profile, loading, isAdmin, signOut }}>
+        <AuthContext.Provider value={{ session, user, profile, loading, isAdmin, isRecovering, setIsRecovering, signOut }}>
             {children}
         </AuthContext.Provider>
     );
