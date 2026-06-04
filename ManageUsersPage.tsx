@@ -8,7 +8,7 @@ interface Profile {
     email: string;
     display_name: string | null;
     phone: string | null;
-    role: 'viewer' | 'user' | 'admin';
+    role: 'viewer' | 'user' | 'admin' | 'recepcionista';
     updated_at: string | null;
 }
 
@@ -26,7 +26,7 @@ export function ManageUsersPage() {
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
     const [editPhone, setEditPhone] = useState('');
-    const [editRole, setEditRole] = useState<'viewer' | 'user' | 'admin'>('viewer');
+    const [editRole, setEditRole] = useState<'viewer' | 'user' | 'admin' | 'recepcionista'>('viewer');
     const [saving, setSaving] = useState(false);
 
     // Estado para la eliminación
@@ -270,6 +270,8 @@ export function ManageUsersPage() {
                                         roleBadgeClass = 'bg-red-500/10 border-red-500/30 text-red-400';
                                     } else if (user.role === 'user') {
                                         roleBadgeClass = 'bg-blue-500/10 border-blue-500/30 text-blue-400';
+                                    } else if (user.role === 'recepcionista') {
+                                        roleBadgeClass = 'bg-purple-500/10 border-purple-500/30 text-purple-400';
                                     }
 
                                     return (
@@ -283,7 +285,7 @@ export function ManageUsersPage() {
                                             </td>
                                             <td className="py-3.5 px-5">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${roleBadgeClass}`}>
-                                                    {user.role === 'admin' ? 'Administrador' : user.role === 'user' ? 'Auditor' : 'Lector'}
+                                                    {user.role === 'admin' ? 'Administrador' : user.role === 'user' ? 'Auditor' : user.role === 'recepcionista' ? 'Recepcionista' : 'Lector'}
                                                 </span>
                                             </td>
                                             <td className="py-3.5 px-5 text-xs text-brand-400">
@@ -394,6 +396,7 @@ export function ManageUsersPage() {
                                 >
                                     <option value="viewer" className="bg-brand-950 text-white">Auditor (Vista de Lectura / Viewer)</option>
                                     <option value="user" className="bg-brand-950 text-white">Auditor (Rol Completo / Auditor)</option>
+                                    <option value="recepcionista" className="bg-brand-950 text-white">Recepcionista</option>
                                     <option value="admin" className="bg-brand-950 text-white">Administrador (Admin)</option>
                                 </select>
                             </div>

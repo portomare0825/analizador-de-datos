@@ -6,7 +6,7 @@ export function UserAdminPage() {
     const { profile } = useAuth();
     const [email, setEmail] = useState('');
     const [displayName, setDisplayName] = useState('');
-    const [selectedRole, setSelectedRole] = useState<'viewer' | 'user' | 'admin'>('viewer');
+    const [selectedRole, setSelectedRole] = useState<'viewer' | 'user' | 'admin' | 'recepcionista'>('viewer');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -140,6 +140,7 @@ export function UserAdminPage() {
                         >
                             <option value="viewer" className="bg-brand-950 text-white">Auditor (Vista de Lectura / Viewer)</option>
                             <option value="user" className="bg-brand-950 text-white">Auditor (Rol Completo / Auditor)</option>
+                            <option value="recepcionista" className="bg-brand-950 text-white">Recepcionista</option>
                             <option value="admin" className="bg-brand-950 text-white">Administrador (Admin)</option>
                         </select>
                     </div>
