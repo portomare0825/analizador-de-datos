@@ -125,8 +125,19 @@ function AppContent() {
     const appVersion = `v${pkg.version}`;
 
     return (
-        <div className="flex flex-col h-screen bg-brand-950 text-brand-50 font-sans overflow-hidden">
-                
+        <div className="flex flex-col h-screen bg-brand-950 text-brand-50 font-sans overflow-hidden relative">
+            {/* Imagen de fondo contable con degradado (idéntico al del Login) */}
+            <div 
+                className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-overlay pointer-events-none z-0"
+                style={{ backgroundImage: "url('login-bg.png')" }}
+            ></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-950 via-transparent to-brand-950 pointer-events-none z-0"></div>
+
+            {/* Círculos de fondo decorativos */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+            <div className="flex flex-col h-full w-full relative z-10 overflow-hidden">
                 {/* Banner de Actualización Automática */}
                 <AutoUpdateBanner 
                     status={updateStatus}
@@ -137,9 +148,9 @@ function AppContent() {
 
                 <div className="flex flex-1 overflow-hidden">
 
-                {/* Sidebar Desktop - Más compacto */}
+                {/* Sidebar Desktop - Más compacto y translúcido */}
                 <aside
-                    className={`hidden md:flex flex-col bg-brand-900 border-r border-brand-800 transition-all duration-300 ease-in-out z-20 ${isCollapsed ? 'w-16' : 'w-56'
+                    className={`hidden md:flex flex-col bg-brand-900/60 backdrop-blur-xl border-r border-brand-800 transition-all duration-300 ease-in-out z-20 ${isCollapsed ? 'w-16' : 'w-56'
                         }`}
                 >
                     {/* Header Logo */}
@@ -250,15 +261,18 @@ function AppContent() {
 
                         {/* Copyright Text */}
                         {!isCollapsed && (
-                            <div className="bg-brand-950/50 rounded-lg p-2 text-[10px] text-brand-400 text-center animate-fade-in whitespace-nowrap overflow-hidden">
-                                LD' Hoteles © {new Date().getFullYear()}
+                            <div className="bg-brand-950/50 rounded-lg p-2 px-3 text-xs text-brand-400 animate-fade-in whitespace-nowrap overflow-hidden flex justify-between items-center">
+                                <span>LD' Hoteles © {new Date().getFullYear()}</span>
+                                <span className="opacity-70 font-mono text-[10px] bg-brand-900/30 border border-brand-800/40 px-1.5 py-0.5 rounded text-brand-300">
+                                    {appVersion}
+                                </span>
                             </div>
                         )}
                     </div>
                 </aside>
 
                 {/* Mobile Header & Menu Overlay (Sin cambios mayores, solo diseño responsivo) */}
-                <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-brand-900 border-b border-brand-800 z-30 flex items-center justify-between px-4 shadow-md">
+                <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-brand-900/60 backdrop-blur-xl border-b border-brand-800 z-30 flex items-center justify-between px-4 shadow-md">
                     <div className="flex items-center gap-2">
                         <SparklesIcon className="w-6 h-6 text-brand-400" />
                         <span className="font-bold text-lg">LD' Analytics</span>
@@ -279,7 +293,7 @@ function AppContent() {
 
                 {/* Mobile Sidebar Overlay */}
                 {isSidebarOpen && (
-                    <div className="md:hidden fixed inset-0 z-20 bg-brand-950/95 backdrop-blur-md pt-16 animate-fade-in">
+                    <div className="md:hidden fixed inset-0 z-20 bg-brand-950/75 backdrop-blur-xl pt-16 animate-fade-in">
                         <nav className="p-4 space-y-2">
                             {menuItems.map((item) => {
                                 const Icon = item.icon;
@@ -333,5 +347,6 @@ function AppContent() {
                 cancelLabel="Cancelar"
             />
         </div>
+    </div>
     );
 }

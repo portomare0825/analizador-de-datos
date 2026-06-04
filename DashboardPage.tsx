@@ -321,7 +321,7 @@ export function DashboardPage() {
         }
     };
 
-    if (loading) return <div className="h-full flex items-center justify-center bg-brand-950"><Spinner /></div>;
+    if (loading) return <div className="h-full flex items-center justify-center bg-transparent"><Spinner /></div>;
 
     return (
         <>
@@ -334,7 +334,7 @@ export function DashboardPage() {
                 .recharts-cartesian-grid-horizontal line, .recharts-cartesian-grid-vertical line { stroke: #1f2937; }
             `}</style>
             
-            <div className="p-6 space-y-6 bg-brand-950 min-h-full text-brand-50 animate-fade-in">
+            <div className="p-6 space-y-6 bg-transparent min-h-full text-brand-50 animate-fade-in">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
