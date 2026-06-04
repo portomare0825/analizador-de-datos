@@ -14,7 +14,8 @@
     "package": "vite build && electron-builder --win",
     "publish": "vite build && electron-builder --win -p always",
     "push-update": "npm version patch --force && npm run publish",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "get-roles": "node C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\bea90eef-c60c-4d51-8a2d-b7e14564dd30\\scratch\\get_role_enum.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",

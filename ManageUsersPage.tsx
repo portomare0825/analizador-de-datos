@@ -19,6 +19,7 @@ export function ManageUsersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [dbRoles, setDbRoles] = useState<string[]>([]);
 
     // Estado para la edición
     const [editingUser, setEditingUser] = useState<Profile | null>(null);
@@ -39,6 +40,37 @@ export function ManageUsersPage() {
             fetchUsers();
         }
     }, [isAdmin]);
+
+    useEffect(() => {
+        const fetchSchema = async () => {
+            try {
+                const res = await fetch(import.meta.env.VITE_SUPABASE_URL, {
+                    headers: {
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+                    }
+                });
+                const schema = await res.json();
+                console.log('PostgREST Schema:', schema);
+                
+                const roleEnum = schema?.definitions?.profiles?.properties?.role?.enum;
+                if (roleEnum && Array.isArray(roleEnum)) {
+                    setDbRoles(roleEnum);
+                } else {
+                    const definitions = schema?.definitions || {};
+                    for (const key of Object.keys(definitions)) {
+                        const enumVal = definitions[key]?.properties?.role?.enum;
+                        if (enumVal && Array.isArray(enumVal)) {
+                            setDbRoles(enumVal);
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching schema:', e);
+            }
+        };
+        fetchSchema();
+    }, []);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -172,6 +204,11 @@ export function ManageUsersPage() {
                     <p className="text-brand-400 text-sm mt-1">
                         Visualiza, busca, edita roles, correos, nombres o elimina cuentas en la plataforma.
                     </p>
+                    {dbRoles.length > 0 && (
+                        <div className="mt-2 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 px-3 py-1.5 rounded-xl w-fit">
+                            Roles válidos detectados en la BD: <strong>{dbRoles.join(', ')}</strong>
+                        </div>
+                    )}
                 </div>
 
                 {/* Search Bar */}
