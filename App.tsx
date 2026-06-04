@@ -101,15 +101,18 @@ function AppContent() {
         return <LoginPage />;
     }
 
-    const menuItems = [
+    const baseMenuItems = [
         { id: 'dashboard', label: 'Panel de Resumen', icon: LayoutDashboard },
         { id: 'audit', label: 'Auditoría General', icon: HomeIcon },
         { id: 'tax-audit', label: 'Auditoría de Tasas', icon: ClipboardDocumentCheckIcon },
         { id: 'transactions', label: 'Transacciones', icon: BanknotesIcon },
         { id: 'cxc', label: 'Pagos CxC', icon: CreditCard },
         { id: 'reports', label: 'Reportes Históricos', icon: ChartBarIcon },
-        { id: 'metrics', label: 'Estado de la BD', icon: DatabaseIcon },
     ];
+
+    const menuItems = profile?.role === 'admin'
+        ? [...baseMenuItems, { id: 'metrics', label: 'Estado de la BD', icon: DatabaseIcon }]
+        : baseMenuItems;
 
     const renderContent = () => {
         switch (currentView) {
