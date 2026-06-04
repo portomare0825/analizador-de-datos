@@ -263,7 +263,7 @@ function AppContent() {
                         {!isCollapsed && (
                             <div className="bg-brand-950/50 rounded-lg p-2 px-3 text-xs text-brand-400 animate-fade-in whitespace-nowrap overflow-hidden flex justify-between items-center">
                                 <span>LD' Hoteles © {new Date().getFullYear()}</span>
-                                <span className="opacity-70 font-mono text-[10px] bg-brand-900/30 border border-brand-800/40 px-1.5 py-0.5 rounded text-brand-300">
+                                <span className="opacity-70 font-mono text-xs bg-brand-900/30 border border-brand-800/40 px-1.5 py-0.5 rounded text-brand-300">
                                     {appVersion}
                                 </span>
                             </div>
