@@ -9,7 +9,8 @@ export function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
-    const [mode, setMode] = useState<'login' | 'forgot-password' | 'reset-password'>('login');
+    const [mode, setMode] = useState<'login' | 'forgot-password' | 'verify-otp' | 'reset-password'>('login');
+    const [otpCode, setOtpCode] = useState('');
 
     const { isRecovering, setIsRecovering, signOut } = useAuth();
 
@@ -47,14 +48,37 @@ export function LoginPage() {
         setMessage(null);
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/`,
+            // Ya no usamos redirectTo porque usaremos el código OTP.
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+            if (error) throw error;
+            setMessage('Se ha enviado un código de seguridad a tu correo electrónico.');
+            setMode('verify-otp');
+        } catch (err: any) {
+            setError(err.message || 'Error al enviar el correo de recuperación');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        setMessage(null);
+
+        try {
+            const { error } = await supabase.auth.verifyOtp({
+                email,
+                token: otpCode,
+                type: 'recovery'
             });
 
             if (error) throw error;
-            setMessage('Se ha enviado un enlace de recuperación a tu correo electrónico.');
+            setMessage('Código verificado correctamente. Ahora puedes cambiar tu contraseña.');
+            setMode('reset-password');
         } catch (err: any) {
-            setError(err.message || 'Error al enviar el correo de recuperación');
+            setError(err.message || 'El código es incorrecto o ha expirado.');
         } finally {
             setLoading(false);
         }
@@ -99,6 +123,7 @@ export function LoginPage() {
         setMessage(null);
         setPassword('');
         setConfirmPassword('');
+        setOtpCode('');
     };
 
     return (
@@ -247,6 +272,68 @@ export function LoginPage() {
                                     className="text-brand-400 hover:text-brand-300 text-xs font-bold underline transition-colors"
                                 >
                                     Volver al Inicio de Sesión
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {mode === 'verify-otp' && (
+                        <form onSubmit={handleVerifyOtp} className="space-y-4">
+                            <div className="text-center pb-1">
+                                <h2 className="text-white font-bold text-base">Verificar Código</h2>
+                                <p className="text-brand-400 text-xs mt-1">Ingresa el código de 6 dígitos enviado a {email}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-brand-300 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1" htmlFor="otpCode">
+                                    Código de Seguridad
+                                </label>
+                                <input
+                                    id="otpCode"
+                                    type="text"
+                                    placeholder="123456"
+                                    value={otpCode}
+                                    onChange={(e) => setOtpCode(e.target.value)}
+                                    className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-400 transition-all placeholder:text-brand-700 text-sm font-medium text-center tracking-[0.5em]"
+                                    required
+                                    maxLength={6}
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-xs font-medium animate-shake">
+                                    {error}
+                                </div>
+                            )}
+
+                            {message && (
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-lg text-xs font-medium animate-fade-in">
+                                    {message}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading || otpCode.length < 6}
+                                className="w-full bg-gradient-to-r from-brand-500 to-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-500/20 hover:shadow-brand-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <span>Verificando...</span>
+                                    </>
+                                ) : (
+                                    'Verificar Código'
+                                )}
+                            </button>
+
+                            <div className="text-center pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => switchMode('login')}
+                                    className="text-brand-400 hover:text-brand-300 text-xs font-bold underline transition-colors"
+                                >
+                                    Cancelar
                                 </button>
                             </div>
                         </form>
