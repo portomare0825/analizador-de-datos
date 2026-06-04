@@ -8,6 +8,7 @@ interface AuthContextType {
     profile: any | null;
     loading: boolean;
     isAdmin: boolean;
+    canEdit: boolean;
     isRecovering: boolean;
     setIsRecovering: (val: boolean) => void;
     signOut: () => Promise<void>;
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
     profile: null,
     loading: true,
     isAdmin: false,
+    canEdit: false,
     isRecovering: false,
     setIsRecovering: () => { },
     signOut: async () => { },
@@ -86,9 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const isAdmin = profile?.role === 'admin';
+    const canEdit = profile?.role === 'admin' || profile?.role === 'user';
 
     return (
-        <AuthContext.Provider value={{ session, user, profile, loading, isAdmin, isRecovering, setIsRecovering, signOut }}>
+        <AuthContext.Provider value={{ session, user, profile, loading, isAdmin, canEdit, isRecovering, setIsRecovering, signOut }}>
             {children}
         </AuthContext.Provider>
     );

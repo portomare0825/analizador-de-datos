@@ -19,6 +19,7 @@ import { BuildingOfficeIcon } from './icons/BuildingOfficeIcon';
 import { HashtagIcon } from './icons/HashtagIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import { Snackbar } from './Snackbar';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DataTableProps {
     headers: string[];
@@ -221,6 +222,7 @@ const SourceDropdown: React.FC<SourceDropdownProps> = ({ options, selected, onCh
 
 export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHeaderMap, hideNotes = false, hideTransactions = false, notesSourceView, useAccountNotes = false, onDataChange, hotelSource, onEditRow, onDeleteRow }) => {
     const { hotel: globalHotel } = useHotel();
+    const { canEdit } = useAuth();
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedRow, setSelectedRow] = useState<DataRow | null>(null);
     const lastSelectedRowId = React.useRef<string | null>(null);
@@ -1115,7 +1117,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                         </th>
                                     );
                                 })}
-                                {(onEditRow || onDeleteRow) && (
+                                {(onEditRow || onDeleteRow) && canEdit && (
                                     <th className="px-4 py-2 sticky top-0 bg-brand-800/80 backdrop-blur-sm w-24 text-right">
                                         Acciones
                                     </th>
@@ -1189,7 +1191,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                         );
                                     })}
 
-                                    {(onEditRow || onDeleteRow) && (
+                                    {(onEditRow || onDeleteRow) && canEdit && (
                                         <td className="px-4 py-2 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {onEditRow && (
@@ -1426,7 +1428,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                     )}
 
                                     {/* Botón Transacciones - CONDICIONAL */}
-                                    {!hideTransactions && !loadingTransactions && (
+                                    {!hideTransactions && !loadingTransactions && canEdit && (
                                         <button
                                             onClick={() => setViewMode('transactions')}
                                             className="flex items-center justify-between w-full px-3 py-2.5 bg-brand-800 rounded-lg border border-brand-700 hover:bg-brand-700 transition-colors group text-sm"

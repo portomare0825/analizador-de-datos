@@ -30,8 +30,8 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1500,
+    height: 950,
     icon: path.join(process.env.VITE_PUBLIC, 'icons/icon-512x512.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -68,7 +68,7 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   createWindow();
-  
+
   // Configurar autoUpdater de forma segura
   try {
     autoUpdater.checkForUpdatesAndNotify();
