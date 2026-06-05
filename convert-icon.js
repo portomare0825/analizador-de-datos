@@ -17,12 +17,13 @@ const destIco = path.join(destDir, 'icon.ico');
 const destSidebarBmp = path.join(destDir, 'installerSidebar.bmp');
 const destHeaderBmp = path.join(destDir, 'installerHeader.bmp');
 
-// Helper to write a 24-bit BMP file from raw RGBA buffer
+// Helper to write a 24-bit BMP file from raw RGBA buffer (bottom-to-top format for Win32 compatibility)
 function writeBmp(buffer, width, height, destPath) {
   const fileHeaderSize = 14;
   const dibHeaderSize = 40;
-  // Row size must be a multiple of 4. Since width is 328 or 300, rowSize is width * 3.
-  const rowSize = width * 3;
+  
+  // Row size must be padded to a multiple of 4 bytes
+  const rowSize = Math.floor((width * 3 + 3) / 4) * 4;
   const imageSize = rowSize * height;
   const fileSize = fileHeaderSize + dibHeaderSize + imageSize;
 
@@ -37,7 +38,7 @@ function writeBmp(buffer, width, height, destPath) {
   // DIB Header (BITMAPINFOHEADER)
   bmpBuffer.writeUInt32LE(dibHeaderSize, 14); // Header size
   bmpBuffer.writeInt32LE(width, 18); // Width
-  bmpBuffer.writeInt32LE(-height, 22); // Height (negative for top-to-bottom)
+  bmpBuffer.writeInt32LE(height, 22); // Height (positive for bottom-to-top)
   bmpBuffer.writeUInt16LE(1, 26); // Planes
   bmpBuffer.writeUInt16LE(24, 28); // Bits per pixel (24-bit RGB)
   bmpBuffer.writeUInt32LE(0, 30); // Compression (0 = BI_RGB)
@@ -47,17 +48,30 @@ function writeBmp(buffer, width, height, destPath) {
   bmpBuffer.writeUInt32LE(0, 46); // Colors in color table
   bmpBuffer.writeUInt32LE(0, 50); // Important colors
 
-  // Pixel Data: Convert RGBA to BGR
+  // Pixel Data: Convert RGBA (top-to-bottom) to BGR (bottom-to-top)
   let pos = fileHeaderSize + dibHeaderSize;
-  for (let i = 0; i < buffer.length; i += 4) {
-    const r = buffer[i];
-    const g = buffer[i + 1];
-    const b = buffer[i + 2];
+  
+  for (let y = height - 1; y >= 0; y--) {
+    const rowStart = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const idx = rowStart + (x * 4);
+      const r = buffer[idx];
+      const g = buffer[idx + 1];
+      const b = buffer[idx + 2];
+      
+      bmpBuffer[pos] = b;     // Blue
+      bmpBuffer[pos + 1] = g; // Green
+      bmpBuffer[pos + 2] = r; // Red
+      pos += 3;
+    }
     
-    bmpBuffer[pos] = b;     // Blue
-    bmpBuffer[pos + 1] = g; // Green
-    bmpBuffer[pos + 2] = r; // Red
-    pos += 3;
+    // Padding
+    const bytesWritten = width * 3;
+    const paddingNeeded = rowSize - bytesWritten;
+    for (let p = 0; p < paddingNeeded; p++) {
+      bmpBuffer[pos] = 0;
+      pos++;
+    }
   }
 
   fs.writeFileSync(destPath, bmpBuffer);
