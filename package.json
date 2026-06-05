@@ -1,7 +1,7 @@
 {
   "name": "analizador-de-datos",
   "private": true,
-  "version": "1.1.26",
+  "version": "1.1.27",
   "type": "module",
   "repository": {
     "type": "git",
@@ -15,7 +15,8 @@
     "publish": "vite build && electron-builder --win -p always",
     "push-update": "npm version patch --force && npm run publish",
     "preview": "vite preview",
-    "get-roles": "node C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\bea90eef-c60c-4d51-8a2d-b7e14564dd30\\scratch\\get_role_enum.js"
+    "get-roles": "node C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\bea90eef-c60c-4d51-8a2d-b7e14564dd30\\scratch\\get_role_enum.js",
+    "convert-icon": "electron convert-icon.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
@@ -45,6 +46,7 @@
   "build": {
     "appId": "com.analizador.cxc",
     "productName": "Auditoría de Ingresos",
+    "icon": "public/icons/icon.ico",
     "directories": {
       "output": "release"
     },
