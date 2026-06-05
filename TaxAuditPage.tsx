@@ -222,6 +222,7 @@ export function TaxAuditPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSavingRate, setIsSavingRate] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
     const [isCxCSummaryOpen, setIsCxCSummaryOpen] = useState(false);
     const [isLoadingRate, setIsLoadingRate] = useState(false);
     const [hasExistingRate, setHasExistingRate] = useState<boolean | null>(null);
@@ -266,6 +267,7 @@ export function TaxAuditPage() {
         const loadRateData = async () => {
             if (!isModalOpen || !selectedDate) return;
             
+            setRateError(null);
             setIsLoadingRate(true);
             setHasExistingRate(null);
             
@@ -691,6 +693,7 @@ export function TaxAuditPage() {
         if (!exchangeRate || isNaN(parseFloat(exchangeRate))) return;
 
         setIsSavingRate(true);
+        setRateError(null);
         const eurValue = euroRate && !isNaN(parseFloat(euroRate)) ? parseFloat(euroRate) : undefined;
         const success = await saveExchangeRate(selectedDate, parseFloat(exchangeRate), eurValue);
 
@@ -702,7 +705,7 @@ export function TaxAuditPage() {
                 setIsModalOpen(false);
             }, 1000);
         } else {
-            alert("Error al guardar la tasa. Verifica tu conexión.");
+            setRateError("Error al guardar la tasa. El usuario con rol auditor podría no tener permisos de escritura en la tabla 'tasas_cambiarias' en Supabase.");
         }
     };
 
@@ -1656,6 +1659,12 @@ export function TaxAuditPage() {
                                 </div>
                                 <p className="text-xs text-brand-500 mt-1">Tasa de cambio del euro para el día.</p>
                             </div>
+
+                            {rateError && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-semibold animate-fade-in text-center leading-relaxed">
+                                    {rateError}
+                                </div>
+                            )}
 
                             <button
                                 onClick={handleSaveRate}
