@@ -73,8 +73,8 @@
       "installerIcon": "public/icons/icon.ico",
       "uninstallerIcon": "public/icons/icon.ico",
       "installerHeaderIcon": "public/icons/icon.ico",
-      "installerSidebar": "public/icons/installerSidebar.png",
-      "installerHeader": "public/icons/installerHeader.png",
+      "installerSidebar": "public/icons/installerSidebar.bmp",
+      "installerHeader": "public/icons/installerHeader.bmp",
       "runAfterFinish": true
     },
     "publish": {
