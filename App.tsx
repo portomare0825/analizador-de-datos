@@ -7,7 +7,6 @@ import { TaxAuditPage } from './TaxAuditPage';
 import { TransactionsPage } from './TransactionsPage';
 import { HomeIcon } from './components/icons/HomeIcon';
 import { ChartBarIcon } from './components/icons/ChartBarIcon';
-import { SparklesIcon } from './components/icons/SparklesIcon';
 import { ChevronLeftIcon } from './components/icons/ChevronLeftIcon';
 import { ChevronRightIcon } from './components/icons/ChevronRightIcon';
 import { ClipboardDocumentCheckIcon } from './components/icons/ClipboardDocumentCheckIcon';
@@ -174,8 +173,8 @@ function AppContent() {
                 >
                     {/* Header Logo */}
                     <div className={`h-16 flex items-center border-b border-brand-800 transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-4 gap-2'}`}>
-                        <div className="bg-brand-800 p-1.5 rounded-lg shrink-0 transition-transform duration-300 hover:scale-105">
-                            <SparklesIcon className="w-5 h-5 text-brand-400" />
+                        <div className="bg-brand-800 p-1 rounded-lg shrink-0 transition-transform duration-300 hover:scale-105">
+                            <img src="/icons/icon.png" alt="Logo" className="w-7 h-7 object-contain" />
                         </div>
                         {!isCollapsed && (
                             <span className="font-bold text-base tracking-tight whitespace-nowrap overflow-hidden animate-fade-in">
@@ -385,7 +384,9 @@ function AppContent() {
                 {/* Mobile Header & Menu Overlay (Sin cambios mayores, solo diseño responsivo) */}
                 <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-brand-900/60 backdrop-blur-xl border-b border-brand-800 z-30 flex items-center justify-between px-4 shadow-md">
                     <div className="flex items-center gap-2">
-                        <SparklesIcon className="w-6 h-6 text-brand-400" />
+                        <div className="bg-brand-800 p-1 rounded-lg shrink-0">
+                            <img src="/icons/icon.png" alt="Logo" className="w-7 h-7 object-contain" />
+                        </div>
                         <span className="font-bold text-lg">LD' Analytics</span>
                     </div>
                     <button
