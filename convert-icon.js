@@ -8,9 +8,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const srcImg = 'C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\9063f215-4ead-43e3-8f7d-1a570507e9c5\\app_icon_shield_large_1780663828355.png';
+const sidebarSrc = 'C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\9063f215-4ead-43e3-8f7d-1a570507e9c5\\installer_sidebar_1780675304912.png';
+const headerSrc = 'C:\\Users\\adm-09\\.gemini\\antigravity-ide\\brain\\9063f215-4ead-43e3-8f7d-1a570507e9c5\\installer_header_1780675320413.png';
 const destDir = path.join(__dirname, 'public/icons');
 const destPng = path.join(destDir, 'icon.png');
 const destIco = path.join(destDir, 'icon.ico');
+const destSidebar = path.join(destDir, 'installerSidebar.png');
+const destHeader = path.join(destDir, 'installerHeader.png');
 
 app.whenReady().then(async () => {
   try {
@@ -55,6 +59,11 @@ app.whenReady().then(async () => {
     
     fs.writeFileSync(destPng, transparentImg.toPNG());
     console.log('Sanitized transparent PNG successfully saved.');
+
+    console.log('Copying installer sidebar and header assets...');
+    fs.copyFileSync(sidebarSrc, destSidebar);
+    fs.copyFileSync(headerSrc, destHeader);
+    console.log('Installer assets successfully copied.');
 
     console.log('Converting transparent PNG to ICO...');
     const icoBuffer = await pngToIco(destPng);
