@@ -12,7 +12,7 @@ import { SaveIcon } from './icons/SaveIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
-import { fetchNotes, fetchTransactions, copyTransactionsToNotes, fetchAccountNotes, fetchNotesFromView, updateAccountNotesRate, updateNoteRate, deleteAccountNote, saveInvoice, executeDatabaseQuery } from '../services/supabaseService';
+import { fetchNotes, fetchTransactions, copyTransactionsToNotes, fetchAccountNotes, fetchNotesFromView, updateAccountNotesRate, updateNoteRate, deleteAccountNote, saveInvoice, executeDatabaseQuery, getExchangeRate } from '../services/supabaseService';
 import { useHotel } from '../contexts/HotelContext';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { BuildingOfficeIcon } from './icons/BuildingOfficeIcon';
@@ -277,6 +277,13 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     const [uniqueSources, setUniqueSources] = useState<string[]>([]);
     const [isSavingCxC, setIsSavingCxC] = useState(false);
 
+    // States for Rate Lookup Modal/Panel inside Manual Rates Modal
+    const [isRateLookupOpen, setIsRateLookupOpen] = useState(false);
+    const [lookupDate, setLookupDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [lookupRates, setLookupRates] = useState<{ usd: number | null; eur: number | null } | null>(null);
+    const [isLoadingLookup, setIsLoadingLookup] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+
     // Snackbar State
     const [snackbar, setSnackbar] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error' }>({
         isOpen: false,
@@ -296,6 +303,24 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     useEffect(() => {
         setCurrentPage(1);
     }, [data]);
+
+    // Effect to fetch exchange rate when lookup date or modal state changes
+    useEffect(() => {
+        const fetchLookupRate = async () => {
+            if (!isRateLookupOpen || !lookupDate) return;
+            setIsLoadingLookup(true);
+            try {
+                const res = await getExchangeRate(lookupDate);
+                setLookupRates(res);
+            } catch (err) {
+                console.error("Error fetching rate for lookup:", err);
+                setLookupRates({ usd: null, eur: null });
+            } finally {
+                setIsLoadingLookup(false);
+            }
+        };
+        fetchLookupRate();
+    }, [isRateLookupOpen, lookupDate]);
 
     // Calculate totals for notes view
     const notesSummary = useMemo(() => {
@@ -1828,12 +1853,25 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                     {selectedRow['Nombre'] || selectedRow['Huesped'] || 'Sin Nombre'}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => setIsRateModalOpen(false)}
-                                className="text-brand-400 hover:text-white transition-colors"
-                            >
-                                <CloseIcon className="w-6 h-6" />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        setLookupRates(null);
+                                        setIsRateLookupOpen(true);
+                                    }}
+                                    title="Consultar Tasas de Cambio"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-800 hover:bg-brand-700 border border-brand-600 rounded-lg text-xs font-bold text-brand-200 hover:text-white transition-all shadow-md"
+                                >
+                                    <BanknotesIcon className="w-4 h-4 text-emerald-400" />
+                                    <span>Consultar Tasas</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsRateModalOpen(false)}
+                                    className="text-brand-400 hover:text-white transition-colors"
+                                >
+                                    <CloseIcon className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
                         {/* ... Body ... */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -2095,6 +2133,108 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                             </button>
                             </div>
                         </div>
+
+                        {/* Sub-modal de Consulta de Tasas de Cambio */}
+                        {isRateLookupOpen && (
+                            <div className="fixed inset-0 z-[10010] flex items-center justify-center bg-brand-950/80 backdrop-blur-sm p-4 animate-fade-in">
+                                <div className="bg-brand-900 border border-brand-700 rounded-xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up flex flex-col space-y-4">
+                                    <div className="flex justify-between items-start">
+                                        <h4 className="text-md font-bold text-white flex items-center gap-2">
+                                            <BanknotesIcon className="w-5 h-5 text-emerald-400" />
+                                            Consultar Tasas
+                                        </h4>
+                                        <button
+                                            onClick={() => setIsRateLookupOpen(false)}
+                                            className="text-brand-400 hover:text-white transition-colors"
+                                        >
+                                            <CloseIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                    
+                                    <p className="text-xs text-brand-300">
+                                        Consulta la tasa de cambio de cualquier fecha (histórica o posterior) de forma rápida.
+                                    </p>
+                                    
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-1.5">Seleccionar Fecha</label>
+                                        <input
+                                            type="date"
+                                            value={lookupDate}
+                                            onChange={(e) => setLookupDate(e.target.value)}
+                                            className="w-full bg-brand-800 border border-brand-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+                                        />
+                                    </div>
+                                    
+                                    <div className="bg-brand-950/60 rounded-xl p-4 border border-brand-800 space-y-3">
+                                        {isLoadingLookup ? (
+                                            <div className="text-center py-4 text-brand-400 text-xs animate-pulse">
+                                                Buscando tasa...
+                                            </div>
+                                        ) : lookupRates ? (
+                                            <div className="space-y-3">
+                                                {/* USD rate row */}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] uppercase font-bold text-brand-400">Tasa USD</span>
+                                                        <span className="text-sm font-mono font-semibold text-white">
+                                                            {lookupRates.usd !== null ? `Bs. ${lookupRates.usd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` : 'No registrada'}
+                                                        </span>
+                                                    </div>
+                                                    {lookupRates.usd !== null && (
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(lookupRates.usd!.toString());
+                                                                setCopiedField('usd');
+                                                                setTimeout(() => setCopiedField(null), 1500);
+                                                            }}
+                                                            className="px-2.5 py-1 bg-brand-700 hover:bg-brand-600 border border-brand-650 text-[10px] font-semibold text-brand-200 hover:text-white rounded transition-colors flex items-center gap-1"
+                                                        >
+                                                            {copiedField === 'usd' ? '¡Copiado!' : 'Copiar'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Divider */}
+                                                <div className="border-t border-brand-800/60"></div>
+                                                
+                                                {/* EUR rate row */}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] uppercase font-bold text-brand-400">Tasa EUR</span>
+                                                        <span className="text-sm font-mono font-semibold text-white">
+                                                            {lookupRates.eur !== null ? `Bs. ${lookupRates.eur.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` : 'No registrada'}
+                                                        </span>
+                                                    </div>
+                                                    {lookupRates.eur !== null && (
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(lookupRates.eur!.toString());
+                                                                setCopiedField('eur');
+                                                                setTimeout(() => setCopiedField(null), 1500);
+                                                            }}
+                                                            className="px-2.5 py-1 bg-brand-700 hover:bg-brand-600 border border-brand-650 text-[10px] font-semibold text-brand-200 hover:text-white rounded transition-colors flex items-center gap-1"
+                                                        >
+                                                            {copiedField === 'eur' ? '¡Copiado!' : 'Copiar'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-brand-400 text-xs italic">
+                                                Selecciona una fecha para consultar.
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <button
+                                        onClick={() => setIsRateLookupOpen(false)}
+                                        className="w-full py-2 bg-brand-700 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-colors"
+                                    >
+                                        Cerrar Consulta
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>,
                 document.body
