@@ -1,7 +1,7 @@
 {
   "name": "analizador-de-datos",
   "private": true,
-  "version": "1.1.44",
+  "version": "1.1.45",
   "type": "module",
   "repository": {
     "type": "git",
@@ -74,7 +74,6 @@
       "uninstallerIcon": "public/icons/icon.ico",
       "installerHeaderIcon": "public/icons/icon.ico",
       "installerSidebar": "public/icons/installerSidebar.bmp",
-      "installerHeader": "public/icons/installerHeader.bmp",
       "runAfterFinish": true
     },
     "publish": {
