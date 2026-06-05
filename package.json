@@ -75,6 +75,7 @@
       "installerHeaderIcon": "public/icons/icon.ico",
       "installerSidebar": "public/icons/installerSidebar.bmp",
       "installerHeader": "public/icons/installerHeader.bmp",
+      "welcomePage": true,
       "runAfterFinish": true
     },
     "publish": {

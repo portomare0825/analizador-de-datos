@@ -17,11 +17,13 @@ const destIco = path.join(destDir, 'icon.ico');
 const destSidebarBmp = path.join(destDir, 'installerSidebar.bmp');
 const destHeaderBmp = path.join(destDir, 'installerHeader.bmp');
 
-// Helper to write a 32-bit BMP file from raw RGBA buffer
+// Helper to write a 24-bit BMP file from raw RGBA buffer
 function writeBmp(buffer, width, height, destPath) {
   const fileHeaderSize = 14;
   const dibHeaderSize = 40;
-  const imageSize = width * height * 4;
+  // Row size must be a multiple of 4. Since width is 328 or 300, rowSize is width * 3.
+  const rowSize = width * 3;
+  const imageSize = rowSize * height;
   const fileSize = fileHeaderSize + dibHeaderSize + imageSize;
 
   const bmpBuffer = Buffer.alloc(fileSize);
@@ -37,7 +39,7 @@ function writeBmp(buffer, width, height, destPath) {
   bmpBuffer.writeInt32LE(width, 18); // Width
   bmpBuffer.writeInt32LE(-height, 22); // Height (negative for top-to-bottom)
   bmpBuffer.writeUInt16LE(1, 26); // Planes
-  bmpBuffer.writeUInt16LE(32, 28); // Bits per pixel (32-bit for BGRA)
+  bmpBuffer.writeUInt16LE(24, 28); // Bits per pixel (24-bit RGB)
   bmpBuffer.writeUInt32LE(0, 30); // Compression (0 = BI_RGB)
   bmpBuffer.writeUInt32LE(imageSize, 34); // Image size
   bmpBuffer.writeInt32LE(2835, 38); // X pixels per meter
@@ -45,19 +47,17 @@ function writeBmp(buffer, width, height, destPath) {
   bmpBuffer.writeUInt32LE(0, 46); // Colors in color table
   bmpBuffer.writeUInt32LE(0, 50); // Important colors
 
-  // Pixel Data: Convert RGBA to BGRA
+  // Pixel Data: Convert RGBA to BGR
   let pos = fileHeaderSize + dibHeaderSize;
   for (let i = 0; i < buffer.length; i += 4) {
     const r = buffer[i];
     const g = buffer[i + 1];
     const b = buffer[i + 2];
-    const a = buffer[i + 3];
-
+    
     bmpBuffer[pos] = b;     // Blue
     bmpBuffer[pos + 1] = g; // Green
     bmpBuffer[pos + 2] = r; // Red
-    bmpBuffer[pos + 3] = a; // Alpha
-    pos += 4;
+    pos += 3;
   }
 
   fs.writeFileSync(destPath, bmpBuffer);
