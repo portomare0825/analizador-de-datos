@@ -23,7 +23,7 @@ app.whenReady().then(async () => {
     const size = img.getSize();
     console.log(`Image loaded successfully: ${size.width}x${size.height}`);
     
-    console.log('Keying out black background to create true transparency...');
+    console.log('Keying out white background to create true transparency...');
     const buffer = img.toBitmap(); // Get raw RGBA buffer
     
     for (let i = 0; i < buffer.length; i += 4) {
@@ -31,15 +31,14 @@ app.whenReady().then(async () => {
       const g = buffer[i + 1];
       const b = buffer[i + 2];
       
-      // Calculate perceptual brightness (0 to 255)
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-      
-      if (brightness < 30) {
-        // Pure transparent for very dark background
+      // Calculate how close the pixel is to white (255, 255, 255)
+      if (r > 245 && g > 245 && b > 245) {
+        // Make completely transparent
         buffer[i + 3] = 0;
-      } else if (brightness < 70) {
-        // Smooth transition/anti-aliasing at the edges to prevent black halos
-        const factor = (brightness - 30) / (70 - 30);
+      } else if (r > 220 && g > 220 && b > 220) {
+        // Smooth transition/anti-aliasing at the edges to prevent white halos
+        const minVal = Math.min(r, g, b);
+        const factor = (245 - minVal) / (245 - 220);
         buffer[i + 3] = Math.round(factor * buffer[i + 3]);
       }
     }
