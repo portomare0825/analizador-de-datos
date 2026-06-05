@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabaseAdmin } from './supabaseClient';
 import { useAuth } from './contexts/AuthContext';
-import { Shield, Search, UserCheck, Trash2, Edit3, X, Save } from 'lucide-react';
+import { Shield, Search, UserCheck, Trash2, Edit3, X, Save, UserPlus } from 'lucide-react';
 
 interface Profile {
     id: string;
@@ -20,6 +20,13 @@ export function ManageUsersPage() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [dbRoles, setDbRoles] = useState<string[]>([]);
+
+    // Estado para crear usuario
+    const [creatingUser, setCreatingUser] = useState(false);
+    const [createName, setCreateName] = useState('');
+    const [createEmail, setCreateEmail] = useState('');
+    const [createPassword, setCreatePassword] = useState('');
+    const [createRole, setCreateRole] = useState<'viewer' | 'user' | 'admin' | 'recepcionista'>('viewer');
 
     // Estado para la edición
     const [editingUser, setEditingUser] = useState<Profile | null>(null);
@@ -93,6 +100,52 @@ export function ManageUsersPage() {
             setError(err.message || 'Error al cargar la lista de usuarios');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!supabaseAdmin) return;
+
+        setSaving(true);
+        setError(null);
+        setSuccessMessage(null);
+
+        try {
+            // 1. Crear usuario en Auth
+            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                email: createEmail.trim(),
+                password: createPassword,
+                email_confirm: true // Se confirma automáticamente para que no necesiten enlace
+            });
+
+            if (authError) throw authError;
+            if (!authData.user) throw new Error("No se pudo crear el usuario");
+
+            // 2. Crear o actualizar el perfil en la tabla profiles (usamos upsert por si hay un trigger)
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .upsert({
+                    id: authData.user.id,
+                    display_name: createName.trim(),
+                    email: createEmail.trim(),
+                    role: createRole,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (profileError) throw profileError;
+
+            setSuccessMessage(`Usuario ${createName || createEmail} creado correctamente.`);
+            setCreatingUser(false);
+            setCreateName('');
+            setCreateEmail('');
+            setCreatePassword('');
+            setCreateRole('viewer');
+            fetchUsers();
+        } catch (err: any) {
+            setError(err.message || 'Error al crear el usuario');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -211,18 +264,27 @@ export function ManageUsersPage() {
                     )}
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative max-w-xs w-full">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <Search className="h-4 w-4 text-brand-500" />
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre o correo..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl pl-9 pr-4 py-2 focus:outline-none focus:border-brand-400 transition-all placeholder:text-brand-700 text-sm"
-                    />
+                {/* Search Bar y Botón Crear */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="relative max-w-xs w-full">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Search className="h-4 w-4 text-brand-500" />
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Buscar usuario..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl pl-9 pr-4 py-2 focus:outline-none focus:border-brand-400 transition-all placeholder:text-brand-700 text-sm"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setCreatingUser(true)}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-brand-500 hover:bg-brand-400 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-brand-500/20 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        Crear Usuario
+                    </button>
                 </div>
             </div>
 
@@ -473,6 +535,112 @@ export function ManageUsersPage() {
                                 )}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal para CREAR usuario */}
+            {creatingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-brand-900 border border-brand-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-5 border-b border-brand-800/50 pb-3">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <UserPlus className="w-5 h-5 text-brand-400" />
+                                Crear Nuevo Usuario
+                            </h3>
+                            <button
+                                onClick={() => setCreatingUser(false)}
+                                className="text-brand-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateUser} className="space-y-4">
+                            <div>
+                                <label className="block text-brand-300 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">
+                                    Nombre Completo
+                                </label>
+                                <input
+                                    type="text"
+                                    value={createName}
+                                    onChange={(e) => setCreateName(e.target.value)}
+                                    placeholder="Ej: Juan Pérez"
+                                    className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-400 text-sm"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-brand-300 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">
+                                    Correo Electrónico
+                                </label>
+                                <input
+                                    type="email"
+                                    value={createEmail}
+                                    onChange={(e) => setCreateEmail(e.target.value)}
+                                    placeholder="usuario@ejemplo.com"
+                                    className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-400 text-sm"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-brand-300 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">
+                                    Contraseña Temporal
+                                </label>
+                                <input
+                                    type="text"
+                                    value={createPassword}
+                                    onChange={(e) => setCreatePassword(e.target.value)}
+                                    placeholder="Contraseña inicial"
+                                    className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-400 text-sm"
+                                    required
+                                    minLength={6}
+                                />
+                                <p className="text-brand-500 text-[10px] mt-1 ml-1">El usuario podrá cambiarla después usando el código OTP de su correo.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-brand-300 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">
+                                    Rol de Acceso
+                                </label>
+                                <select
+                                    value={createRole}
+                                    onChange={(e) => setCreateRole(e.target.value as any)}
+                                    className="w-full bg-brand-950/50 border border-brand-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-400 text-sm"
+                                >
+                                    <option value="admin">Administrador (Control Total)</option>
+                                    <option value="user">Auditor (Ver y Editar Datos)</option>
+                                    <option value="recepcionista">Recepcionista (Manejo de Transacciones)</option>
+                                    <option value="viewer">Lector (Solo Ver)</option>
+                                </select>
+                            </div>
+
+                            <div className="flex gap-3 pt-4 border-t border-brand-800/50 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreatingUser(false)}
+                                    className="flex-1 bg-brand-950 hover:bg-brand-800 text-white font-semibold py-2.5 rounded-xl border border-brand-800 transition-colors text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="flex-1 bg-brand-500 hover:bg-brand-400 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-brand-500/20 transition-colors disabled:opacity-50 flex justify-center items-center gap-2 text-sm"
+                                >
+                                    {saving ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            Crear Usuario
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
