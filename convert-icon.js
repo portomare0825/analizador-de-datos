@@ -122,22 +122,39 @@ app.whenReady().then(async () => {
     fs.writeFileSync(destIco, icoBuffer);
     console.log('Icon successfully converted to icon.ico!');
 
-    // Convert sidebar and header PNGs to BMPs for NSIS compatibility
-    console.log('Converting installer sidebar to BMP...');
+    // Convert sidebar and header PNGs to BMPs for NSIS compatibility with exact standard dimensions
+    console.log('Resizing and converting installer sidebar to BMP (164x314)...');
     const sidebarImg = nativeImage.createFromPath(sidebarSrc);
     if (!sidebarImg.isEmpty()) {
-      const sbSize = sidebarImg.getSize();
-      writeBmp(sidebarImg.toBitmap(), sbSize.width, sbSize.height, destSidebarBmp);
+      const resizedSidebar = sidebarImg.resize({ width: 164, height: 314, quality: 'better' });
+      writeBmp(resizedSidebar.toBitmap(), 164, 314, destSidebarBmp);
       console.log('Installer sidebar BMP successfully created.');
     } else {
       console.error('Warning: Sidebar source image is empty.');
     }
 
-    console.log('Converting installer header to BMP...');
+    console.log('Resizing and converting installer header to BMP (150x57)...');
     const headerImg = nativeImage.createFromPath(headerSrc);
     if (!headerImg.isEmpty()) {
-      const hSize = headerImg.getSize();
-      writeBmp(headerImg.toBitmap(), hSize.width, hSize.height, destHeaderBmp);
+      const resizedHeader = headerImg.resize({ width: 150, height: 57, quality: 'better' });
+      const headerBuffer = resizedHeader.toBitmap();
+      
+      // Swap background from dark green/black (brightness < 60) to solid white
+      // so it blends seamlessly with the white title bar of the NSIS installer
+      for (let i = 0; i < headerBuffer.length; i += 4) {
+        const r = headerBuffer[i];
+        const g = headerBuffer[i + 1];
+        const b = headerBuffer[i + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        
+        if (brightness < 60) {
+          headerBuffer[i] = 255;     // Red
+          headerBuffer[i + 1] = 255; // Green
+          headerBuffer[i + 2] = 255; // Blue
+        }
+      }
+      
+      writeBmp(headerBuffer, 150, 57, destHeaderBmp);
       console.log('Installer header BMP successfully created.');
     } else {
       console.error('Warning: Header source image is empty.');
