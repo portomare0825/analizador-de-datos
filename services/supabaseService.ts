@@ -1,5 +1,7 @@
-import { supabase } from '../supabaseClient';
+import { supabase as client, supabaseAdmin } from '../supabaseClient';
 import type { DataRow } from '../types';
+
+const supabase = supabaseAdmin || client;
 
 /**
  * Convierte una cadena arbitraria (ej: "Fecha de llegada") en un slug snake_case (ej: "fecha_de_llegada")
@@ -678,14 +680,23 @@ export const deleteTransaction = async (id: number, tableName: string): Promise<
 
 export const deleteTransactionsByRange = async (startDate: string, endDate: string, dateColumn: string, tableName: string): Promise<boolean> => {
     try {
-        const endObj = new Date(endDate);
-        endObj.setDate(endObj.getDate() + 1);
-        const nextDay = endObj.toISOString().split('T')[0];
+        // Parse the raw YYYY-MM-DD values in UTC to prevent timezone shifts
+        const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+        const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+
+        const startUTC = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+        const endUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay));
+        
+        // Add 1 day to the end date for the '<' (lt) comparison
+        endUTC.setUTCDate(endUTC.getUTCDate() + 1);
+
+        const startStr = startUTC.toISOString().split('T')[0];
+        const nextDay = endUTC.toISOString().split('T')[0];
 
         const { data: rowsToDelete, error: selectError } = await supabase
             .from(tableName)
             .select('id')
-            .gte(dateColumn, startDate)
+            .gte(dateColumn, startStr)
             .lt(dateColumn, nextDay);
 
         if (selectError) {

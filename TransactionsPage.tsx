@@ -50,6 +50,7 @@ export function TransactionsPage() {
     const [isDbSource, setIsDbSource] = useState(false);
     const [reservationSearch, setReservationSearch] = useState('');
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Estado para el modal de confirmación de borrado
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: 'single' | 'date'; row?: DataRow | null; dateRange?: { start: string, end: string } | null }>({
@@ -111,7 +112,7 @@ export function TransactionsPage() {
             }
         };
         loadInitialData();
-    }, [TABLE_NAME, hotel, dateRange.start, dateRange.end, reservationSearch]);
+    }, [TABLE_NAME, hotel, dateRange.start, dateRange.end, reservationSearch, refreshTrigger]);
 
     // --- Helpers para limpieza de datos ---
     const cleanValue = (val: any, dbKey: string): any => {
@@ -352,19 +353,45 @@ export function TransactionsPage() {
                     return;
                 }
 
-                // 1. Detectar la columna correcta
+                // Helper para formatear cualquier entrada a YYYY-MM-DD
+                const formatToISODate = (d: any): string => {
+                    if (!d) return '';
+                    if (d instanceof Date) {
+                        return d.toISOString().split('T')[0];
+                    }
+                    const str = String(d).trim();
+                    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+                        return str.substring(0, 10);
+                    }
+                    const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+                    if (match) {
+                        const dd = match[1].padStart(2, '0');
+                        const mm = match[2].padStart(2, '0');
+                        const yyyy = match[3];
+                        return `${yyyy}-${mm}-${dd}`;
+                    }
+                    const parsed = new Date(str);
+                    if (!isNaN(parsed.getTime())) {
+                        return parsed.toISOString().split('T')[0];
+                    }
+                    return str.substring(0, 10);
+                };
+
+                // 1. Detectar la columna correcta (búsqueda insensible a mayúsculas/minúsculas)
                 const sampleRow = filteredData[0];
-                let targetColumn = 'fecha_servicio';
-                if (sampleRow['fecha_servicio']) targetColumn = 'fecha_servicio';
-                else if (sampleRow['fecha_hora']) targetColumn = 'fecha_hora';
-                else if (sampleRow['fecha']) targetColumn = 'fecha';
-                else if (sampleRow['created_at']) targetColumn = 'created_at';
+                const rowKeys = Object.keys(sampleRow);
+                const targetColumn = rowKeys.find(k => k.toLowerCase() === 'fecha_servicio')
+                                  || rowKeys.find(k => k.toLowerCase() === 'fecha_hora')
+                                  || rowKeys.find(k => k.toLowerCase() === 'fecha')
+                                  || rowKeys.find(k => k.toLowerCase() === 'created_at')
+                                  || 'fecha_servicio';
 
                 // 2. Extraer las fechas reales de los datos (Min y Max)
                 const dates = filteredData
                     .map(r => r[targetColumn])
                     .filter(d => d) // Quitar nulos
-                    .map(d => typeof d === 'string' ? d.substring(0, 10) : new Date(d).toISOString().split('T')[0])
+                    .map(formatToISODate)
+                    .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
                     .sort();
 
                 if (dates.length === 0) {
@@ -384,11 +411,9 @@ export function TransactionsPage() {
                 // Usamos realStart y realEnd para asegurar que coincida con lo que la BD tiene
                 const success = await deleteTransactionsByRange(realStart, realEnd, targetColumn, TABLE_NAME);
                 if (success) {
-                    // Recargar datos para asegurar consistencia
-                    const newData = await fetchDataFromSupabase(TABLE_NAME);
-                    setData(newData);
+                    // Disparar el useEffect para recargar los datos filtrados en lugar de descargar toda la BD sin filtros
+                    setRefreshTrigger(prev => prev + 1);
                     setDeleteModal({ isOpen: false, type: 'single', row: null, dateRange: null });
-                    setStatus('success');
                 } else {
                     setStatus('success'); // Restaurar UI
                     alert('Error al eliminar los registros por rango de fecha.');
