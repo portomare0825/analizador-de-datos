@@ -1509,15 +1509,41 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                 {selectedRow['Fuente']}
                                             </span>
                                         )}
-                                        <span className="text-sm font-medium text-brand-50 truncate max-w-[200px] sm:max-w-[300px] leading-tight text-center">
-                                            {selectedRow['Nombre'] || selectedRow['Huesped'] || 'Sin Nombre'}
-                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-sm font-medium text-brand-50 truncate max-w-[200px] sm:max-w-[300px] leading-tight text-center">
+                                                {selectedRow['Nombre'] || selectedRow['Huesped'] || 'Sin Nombre'}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    const nombre = String(selectedRow['Nombre'] || selectedRow['Huesped'] || 'Sin Nombre');
+                                                    navigator.clipboard.writeText(nombre);
+                                                    setCopiedField('nombre');
+                                                    setTimeout(() => setCopiedField(null), 1500);
+                                                }}
+                                                className="p-0.5 rounded text-brand-500 hover:text-brand-200 hover:bg-brand-700/50 transition-all flex-shrink-0"
+                                                title={copiedField === 'nombre' ? '¡Copiado!' : 'Copiar nombre'}
+                                            >
+                                                <ClipboardIcon className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
                                         <span className="text-xl sm:text-2xl font-bold text-brand-400 font-mono tracking-tight">
                                             #{selectedRow['Numero de la reserva']}
                                         </span>
+                                        <button
+                                            onClick={() => {
+                                                const numReserva = String(selectedRow['Numero de la reserva'] || '');
+                                                navigator.clipboard.writeText(numReserva);
+                                                setCopiedField('numreserva');
+                                                setTimeout(() => setCopiedField(null), 1500);
+                                            }}
+                                            className="p-0.5 rounded text-brand-500 hover:text-brand-200 hover:bg-brand-700/50 transition-all flex-shrink-0"
+                                            title={copiedField === 'numreserva' ? '¡Copiado!' : 'Copiar número'}
+                                        >
+                                            <ClipboardIcon className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
                                 </div>
                                 {/* ... Tabla de Notas (mismo código) ... */}
@@ -1631,6 +1657,17 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                     <td className="px-3 py-4 text-right font-bold text-brand-200 text-xl align-top whitespace-nowrap">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <span>{formatMoney(notesSummary.totalBolivares)} Bs</span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(String(formatMoney(notesSummary.totalBolivares)).replace(/\./g, ''));
+                                                                    setCopiedField('totalbs');
+                                                                    setTimeout(() => setCopiedField(null), 1500);
+                                                                }}
+                                                                className="p-0.5 rounded text-brand-500 hover:text-brand-200 hover:bg-brand-700/50 transition-all flex-shrink-0"
+                                                                title={copiedField === 'totalbs' ? '¡Copiado!' : 'Copiar total Bs'}
+                                                            >
+                                                                <ClipboardIcon className="w-3.5 h-3.5" />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
