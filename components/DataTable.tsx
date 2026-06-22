@@ -42,6 +42,8 @@ interface ManualRow {
     debito: string;
     credito: string;
     tasa: string;
+    fecha: string;
+    usuario: string;
 }
 
 const ROWS_PER_PAGE = 20;
@@ -198,7 +200,7 @@ const SourceDropdown: React.FC<SourceDropdownProps> = ({ options, selected, onCh
                                 </div>
                             ))
                         ) : searchTerm.trim() !== '' ? (
-                            <div 
+                            <div
                                 className="px-4 py-3 text-sm text-brand-300 hover:bg-brand-700 cursor-pointer flex items-center gap-2 border-t border-brand-700/50"
                                 onClick={() => {
                                     onChange(searchTerm.trim());
@@ -222,15 +224,15 @@ const SourceDropdown: React.FC<SourceDropdownProps> = ({ options, selected, onCh
 
 export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHeaderMap, hideNotes = false, hideTransactions = false, notesSourceView, useAccountNotes = false, onDataChange, hotelSource, onEditRow, onDeleteRow }) => {
     const { hotel: globalHotel } = useHotel();
-    const { canEdit } = useAuth();
+    const { canEdit, profile } = useAuth();
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedRow, setSelectedRow] = useState<DataRow | null>(null);
     const lastSelectedRowId = React.useRef<string | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     // Lógica robusta para determinar el nombre del hotel
-    const isPlus = hotelSource 
-        ? hotelSource.toLowerCase().includes('plus') 
+    const isPlus = hotelSource
+        ? hotelSource.toLowerCase().includes('plus')
         : globalHotel === 'plus';
     const hotelDisplayName = isPlus ? 'Hotel Plus' : 'Hotel Palm';
 
@@ -510,7 +512,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                     setLoadingNotes(false);
                 });
             }
-            
+
             // Load Transactions only if not hidden
             if (!hideTransactions) {
                 setLoadingTransactions(true);
@@ -575,7 +577,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     useEffect(() => {
         if (selectedRow) {
             const currentId = String(selectedRow['Numero de la reserva'] || selectedRow['Registro Reserva'] || selectedRow.id);
-            
+
             // Solo resetear el viewMode si es una fila DIFERENTE a la anterior
             if (lastSelectedRowId.current !== currentId) {
                 setViewMode('details');
@@ -718,17 +720,17 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     if (selectedRow) {
         // Mapeo robusto para el monto de habitación
         roomAmount = parseCurrency(
-            selectedRow['Total Hab.'] || 
-            selectedRow['total_hab'] || 
+            selectedRow['Total Hab.'] ||
+            selectedRow['total_hab'] ||
             selectedRow['Monto Hab.'] ||
             0
         );
-        
+
         // Mapeo robusto para el monto total
         totalAmount = parseCurrency(
-            selectedRow['Total General'] || 
-            selectedRow['total_general'] || 
-            selectedRow['Total'] || 
+            selectedRow['Total General'] ||
+            selectedRow['total_general'] ||
+            selectedRow['Total'] ||
             selectedRow['Monto Total'] ||
             0
         );
@@ -788,6 +790,8 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
 
     // --- Manual Row Handlers ---
     const handleAddManualRow = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const currentUser = profile?.nombre || profile?.name || profile?.email || '';
         setManualRows(prev => [
             ...prev,
             {
@@ -796,7 +800,9 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                 nota: '',
                 debito: '',
                 credito: '',
-                tasa: ''
+                tasa: '',
+                fecha: today,
+                usuario: currentUser
             }
         ]);
     };
@@ -837,6 +843,8 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
             debito: parseFloat(row.debito) || 0,
             credito: parseFloat(row.credito) || 0,
             tasa_manual: parseFloat(row.tasa) || 0,
+            fecha_hora: row.fecha ? new Date(row.fecha).toISOString() : new Date().toISOString(),
+            usuario: row.usuario || '',
             id: row.id // Temporary ID, backend will generate real ID
         }));
 
@@ -1007,7 +1015,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                 showSnackbar(`${cxcType === 'cxc' ? 'Cuenta por Cobrar' : 'Intercambio'} guardado exitosamente.`, 'success');
                 setIsCxCModalOpen(false);
                 setCxcSource('');
-                
+
                 // Cerrar modal de detalles y refrescar la tabla principal
                 if (onDataChange) {
                     handleCloseModal();
@@ -1872,7 +1880,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
             {isRateModalOpen && createPortal(
                 // ... Rate Modal Content ...
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-brand-950/90 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-brand-900 border border-brand-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[85vh] animate-fade-in-up">
+                    <div className="bg-brand-900 border border-brand-700 rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col max-h-[85vh] animate-fade-in-up">
                         {/* ... Header ... */}
                         <div className="px-6 py-4 border-b border-brand-800 flex justify-between items-center bg-brand-800/50 rounded-t-2xl">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -1992,6 +2000,8 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             <tr>
                                                 <th className="px-4 py-3 font-semibold rounded-tl-lg">Descripción</th>
                                                 <th className="px-4 py-3 font-semibold">Nota</th>
+                                                <th className="px-4 py-3 font-semibold">Fecha</th>
+                                                <th className="px-4 py-3 font-semibold">Usuario</th>
                                                 <th className="px-4 py-3 font-semibold text-right">Débito</th>
                                                 <th className="px-4 py-3 font-semibold text-right text-green-400">Crédito</th>
                                                 <th className="px-4 py-3 font-semibold text-right text-brand-400">Tasa</th>
@@ -2006,6 +2016,8 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                     <tr key={trx.id} className="hover:bg-brand-800/30">
                                                         <td className="px-4 py-3 font-medium text-white break-words">{trx.descripcion}</td>
                                                         <td className="px-4 py-3 text-brand-300 break-words">{trx.nota || '-'}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap opacity-70 text-xs">{formatDateTime(trx.fecha_hora || trx.fecha_servicio)}</td>
+                                                        <td className="px-4 py-3 opacity-70 text-xs">{trx.usuario || '-'}</td>
                                                         <td className="px-4 py-3 text-right text-brand-100">{trx.debito ? formatDecimalUS(trx.debito) : '-'}</td>
                                                         <td className="px-4 py-3 text-right text-green-400 font-medium">
                                                             {trx.credito && parseCurrency(trx.credito) > 0 ? (
@@ -2048,6 +2060,23 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                             placeholder="Nota (opcional)"
                                                             value={row.nota}
                                                             onChange={(e) => handleManualRowChange(row.id, 'nota', e.target.value)}
+                                                            className="w-full bg-brand-900 border border-brand-700 rounded px-2 py-1 text-brand-200 text-xs focus:ring-1 focus:ring-brand-500"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <input
+                                                            type="date"
+                                                            value={row.fecha}
+                                                            onChange={(e) => handleManualRowChange(row.id, 'fecha', e.target.value)}
+                                                            className="w-full bg-brand-900 border border-brand-700 rounded px-2 py-1 text-brand-200 text-xs focus:ring-1 focus:ring-brand-500"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Usuario"
+                                                            value={row.usuario}
+                                                            onChange={(e) => handleManualRowChange(row.id, 'usuario', e.target.value)}
                                                             className="w-full bg-brand-900 border border-brand-700 rounded px-2 py-1 text-brand-200 text-xs focus:ring-1 focus:ring-brand-500"
                                                         />
                                                     </td>
@@ -2096,7 +2125,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             {/* Mensaje vacío si no hay nada */}
                                             {transactions.filter(t => selectedTrxIds.has(t.id)).length === 0 && manualRows.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={6} className="px-4 py-8 text-center text-brand-500 italic text-xs">
+                                                    <td colSpan={8} className="px-4 py-8 text-center text-brand-500 italic text-xs">
                                                         No hay transacciones seleccionadas ni filas manuales.
                                                         <br />
                                                         Usa el botón "Agregar Fila" para crear un registro manual.
@@ -2104,38 +2133,22 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                 </tr>
                                             )}
                                         </tbody>
-                                        <tfoot className="bg-brand-800/90 font-bold border-t border-brand-600">
+                                        <tfoot className="bg-brand-800/90 sticky bottom-0 backdrop-blur-sm z-10 border-t border-brand-600 shadow-lg">
                                             <tr>
-                                                <td colSpan={2} className="px-4 py-3 text-right text-brand-400 uppercase tracking-wider text-xs">
+                                                <td colSpan={4} className="px-4 py-3 text-right font-bold text-brand-400 uppercase tracking-wider text-xs">
                                                     TOTALES A PROCESAR
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-brand-100 text-base">
+                                                <td className="px-4 py-3 text-right font-bold text-brand-100 text-base whitespace-nowrap">
                                                     {formatDecimalUS(manualRateTotals.totalDebito)}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-green-400 text-base">
+                                                <td className="px-4 py-3 text-right font-bold text-green-400 text-base whitespace-nowrap">
                                                     {formatDecimalUS(manualRateTotals.totalCredito)}
                                                 </td>
-                                                <td colSpan={2} className="px-4 py-3 text-right text-brand-100 font-mono text-base">
-                                                    {formatDecimalUS(manualRateTotals.totalBolivares)} <span className="text-xs text-brand-500">Bs</span>
+                                                <td className="px-4 py-3 text-right font-bold text-brand-100 font-mono text-base whitespace-nowrap">
+                                                    {formatDecimalUS(manualRateTotals.totalBolivares)} <span className="text-xs text-brand-500 font-normal">Bs</span>
                                                 </td>
+                                                <td></td>
                                             </tr>
-                                            {(() => {
-                                                const difference = manualRateTotals.totalCredito - roomAmount;
-                                                // Solo mostrar si la diferencia es significativa (evitar errores de redondeo flotante)
-                                                if (Math.abs(difference) < 0.01) return null;
-
-                                                return (
-                                                    <tr className="bg-brand-900/50">
-                                                        <td colSpan={2} className="px-4 py-2 text-right text-brand-400 text-xs italic font-normal">
-                                                            Diferencia (Crédito - Habitación):
-                                                        </td>
-                                                        <td className={`px-4 py-2 text-right text-xs font-bold ${difference !== 0 ? 'text-yellow-400' : 'text-brand-500'}`}>
-                                                            {formatDecimalUS(difference)}
-                                                        </td>
-                                                        <td colSpan={3}></td>
-                                                    </tr>
-                                                );
-                                            })()}
                                         </tfoot>
                                     </table>
                                 </div>
@@ -2148,26 +2161,26 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                 {hotelDisplayName}
                             </span>
                             <div className="flex gap-3">
-                            <button
-                                onClick={() => setIsRateModalOpen(false)}
-                                className="px-4 py-2 bg-brand-800 hover:bg-brand-700 text-brand-200 font-semibold rounded-lg transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleSaveNotesWithRates}
-                                disabled={isCopying}
-                                className="flex items-center gap-2 px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg shadow-lg transition-colors disabled:opacity-50"
-                            >
-                                {isCopying ? (
-                                    <span className="animate-pulse">Guardando...</span>
-                                ) : (
-                                    <>
-                                        <SaveIcon className="w-5 h-5" />
-                                        Guardar
-                                    </>
-                                )}
-                            </button>
+                                <button
+                                    onClick={() => setIsRateModalOpen(false)}
+                                    className="px-4 py-2 bg-brand-800 hover:bg-brand-700 text-brand-200 font-semibold rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveNotesWithRates}
+                                    disabled={isCopying}
+                                    className="flex items-center gap-2 px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg shadow-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isCopying ? (
+                                        <span className="animate-pulse">Guardando...</span>
+                                    ) : (
+                                        <>
+                                            <SaveIcon className="w-5 h-5" />
+                                            Guardar
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
 
@@ -2187,11 +2200,11 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             <CloseIcon className="w-5 h-5" />
                                         </button>
                                     </div>
-                                    
+
                                     <p className="text-xs text-brand-300">
                                         Consulta la tasa de cambio de cualquier fecha (histórica o posterior) de forma rápida.
                                     </p>
-                                    
+
                                     <div>
                                         <label className="block text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-1.5">Seleccionar Fecha</label>
                                         <input
@@ -2201,7 +2214,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             className="w-full bg-brand-800 border border-brand-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
                                         />
                                     </div>
-                                    
+
                                     <div className="bg-brand-950/60 rounded-xl p-4 border border-brand-800 space-y-3">
                                         {isLoadingLookup ? (
                                             <div className="text-center py-4 text-brand-400 text-xs animate-pulse">
@@ -2230,10 +2243,10 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                         </button>
                                                     )}
                                                 </div>
-                                                
+
                                                 {/* Divider */}
                                                 <div className="border-t border-brand-800/60"></div>
-                                                
+
                                                 {/* EUR rate row */}
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex flex-col">
@@ -2262,7 +2275,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <button
                                         onClick={() => setIsRateLookupOpen(false)}
                                         className="w-full py-2 bg-brand-700 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-colors"
@@ -2435,9 +2448,9 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
 
                             <div>
                                 <label className="block text-xs font-bold text-brand-400 uppercase mb-2">Fuente de Destino (CxC)</label>
-                                <SourceDropdown 
-                                    options={uniqueSources} 
-                                    selected={cxcSource} 
+                                <SourceDropdown
+                                    options={uniqueSources}
+                                    selected={cxcSource}
                                     onChange={setCxcSource}
                                     placeholder="Selecciona la fuente que debe"
                                 />
