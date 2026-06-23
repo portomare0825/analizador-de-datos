@@ -572,14 +572,13 @@ export function DashboardPage() {
                                     <span className="text-sm font-bold text-emerald-100/90">{selectedPaxDetail.kids} Niños</span>
                                 </div>
                                 {(() => {
-                                    const totalRooms = new Set();
+                                    let totalRoomsCount = 0;
                                     Object.values(selectedPaxDetail.sources).forEach((s: any) => {
                                         s.rows.forEach((r: any) => {
-                                            const rooms = (r['Numero de habitacion'] || '').toString().split(',').map((item: string) => item.trim()).filter(Boolean);
-                                            rooms.forEach((room: string) => totalRooms.add(room));
+                                            const rc = (r['Numero de habitacion'] || '').toString().split(',').filter((item: string) => item.trim().length > 0).length || 1;
+                                            totalRoomsCount += rc;
                                         });
                                     });
-                                    const totalRoomsCount = totalRooms.size;
                                     return (
                                         <div className="px-5 py-2.5 bg-[#166658] border border-[#1d7a6a] rounded-2xl flex items-center gap-3">
                                             <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
@@ -595,13 +594,12 @@ export function DashboardPage() {
                             <div className="space-y-4">
                                 <h4 className="text-[10px] font-bold text-brand-500 uppercase tracking-[0.2em] pl-1">Distribución por Fuente</h4>
                                 {Object.entries(selectedPaxDetail.sources).map(([source, data]: [string, any]) => {
-                                    // Calcular cantidad de habitaciones únicas
-                                    const uniqueRooms = new Set();
+                                    // Calcular cantidad de habitaciones (por registro)
+                                    let roomCount = 0;
                                     data.rows.forEach((r: any) => {
-                                        const rooms = (r['Numero de habitacion'] || '').toString().split(',').map((s: string) => s.trim()).filter(Boolean);
-                                        rooms.forEach((room: string) => uniqueRooms.add(room));
+                                        const rc = (r['Numero de habitacion'] || '').toString().split(',').filter((s: string) => s.trim().length > 0).length || 1;
+                                        roomCount += rc;
                                     });
-                                    const roomCount = uniqueRooms.size;
                                     const isSmallAmount = data.revenue > 0 && data.revenue < 100;
                                     const hasBalance = data.pending > 0;
                                     const statusStr = hasBalance ? 'PENDIENTE' : 'PAGADO';
@@ -766,12 +764,11 @@ export function DashboardPage() {
                                     const tA = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Adultos']) || 0), 0);
                                     const tK = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Niños']) || 0), 0);
                                     
-                                    const uniqueRooms = new Set();
+                                    let totalRooms = 0;
                                     selectedSourceDetail.rows.forEach((r: any) => {
-                                        const rooms = (r['Numero de habitacion'] || '').toString().split(',').map((s: string) => s.trim()).filter(Boolean);
-                                        rooms.forEach((room: string) => uniqueRooms.add(room));
+                                        const rc = (r['Numero de habitacion'] || '').toString().split(',').filter((s: string) => s.trim().length > 0).length || 1;
+                                        totalRooms += rc;
                                     });
-                                    const totalRooms = uniqueRooms.size;
 
                                     return (
                                         <>
