@@ -2149,6 +2149,27 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                                 </td>
                                                 <td></td>
                                             </tr>
+                                            {(() => {
+                                                const difference = manualRateTotals.totalCredito - roomAmount;
+                                                // Solo mostrar si la diferencia es significativa (evitar errores de redondeo flotante)
+                                                if (Math.abs(difference) < 0.01) return null;
+
+                                                const isMissing = difference < 0; // Falta dinero
+                                                const colorClass = isMissing ? 'text-red-400' : 'text-blue-400';
+                                                const label = isMissing ? 'Falta por pagar:' : 'Pago en exceso:';
+
+                                                return (
+                                                    <tr className="bg-brand-900/50">
+                                                        <td colSpan={4} className={`px-4 py-2 text-right text-xs italic font-normal ${colorClass} opacity-80`}>
+                                                            {label}
+                                                        </td>
+                                                        <td className={`px-4 py-2 text-right text-xs font-bold ${colorClass}`}>
+                                                            {formatDecimalUS(Math.abs(difference))}
+                                                        </td>
+                                                        <td colSpan={3}></td>
+                                                    </tr>
+                                                );
+                                            })()}
                                         </tfoot>
                                     </table>
                                 </div>
