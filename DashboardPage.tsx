@@ -334,7 +334,7 @@ export function DashboardPage() {
                 .recharts-cartesian-grid-horizontal line, .recharts-cartesian-grid-vertical line { stroke: #1f2937; }
             `}</style>
             
-            <div className="p-6 space-y-6 bg-transparent min-h-full text-brand-50 animate-fade-in">
+            <div className="p-6 space-y-6 bg-transparent min-h-full text-brand-50 animate-fade-in print:hidden">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
@@ -881,6 +881,69 @@ export function DashboardPage() {
                 </div>
             )}
         </div>
+        
+        {/* VISTA DE IMPRESIÓN PROFESIONAL (Solo visible al imprimir) */}
+        {selectedSourceDetail && (
+            <div className="hidden print:block w-full bg-white text-black font-sans pt-8 pb-12 px-4">
+                {/* Header Profesional */}
+                <div className="flex justify-between items-end border-b-2 border-gray-800 pb-6 mb-8">
+                    <div>
+                        <h2 className="text-2xl font-black uppercase tracking-widest text-gray-900 mb-1">
+                            {hotel.toLowerCase().includes('plus') ? "LD Plus Hotel & Suites" : "LD Palm Beach"}
+                        </h2>
+                        <p className="text-xs text-gray-500 font-bold tracking-widest uppercase">Reporte Operativo</p>
+                    </div>
+                    <div className="text-right">
+                        <h1 className="text-2xl font-black uppercase tracking-tight text-gray-800">{selectedSourceDetail.name}</h1>
+                        <p className="text-sm font-semibold text-gray-600 mt-1">Total: {selectedSourceDetail.rows.length} registros</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Generado: {new Date().toLocaleString('es-VE')}</p>
+                    </div>
+                </div>
+
+                {/* Tabla */}
+                <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr className="bg-gray-100 border-y-2 border-gray-800">
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-gray-700">Localizador</th>
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-gray-700">Huésped principal</th>
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-center text-gray-700">Habitación</th>
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-center text-gray-700">Pax</th>
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-center text-gray-700">Estadía</th>
+                            <th className="py-3 px-3 font-bold uppercase tracking-wider text-right text-gray-700">Monto Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {selectedSourceDetail.rows.map((row: any, idx: number) => (
+                            <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 break-inside-avoid">
+                                <td className="py-3 px-3 font-mono font-semibold text-gray-800">{row['Numero de la reserva']}</td>
+                                <td className="py-3 px-3 font-bold text-gray-900">{row['Nombre'] || 'S/N'}</td>
+                                <td className="py-3 px-3 text-center font-bold text-gray-900">{row['Numero de habitacion'] || '-'}</td>
+                                <td className="py-3 px-3 text-center text-gray-700">{row['Pax Total'] || (parseInt(row['Adultos'] || 0) + parseInt(row['Niños'] || 0))}</td>
+                                <td className="py-3 px-3 text-center whitespace-nowrap text-gray-600 font-medium">
+                                    {new Date(row['Fecha de llegada']).toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'})} 
+                                    {' al '} 
+                                    {new Date(row['Salida']).toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'})}
+                                </td>
+                                <td className="py-3 px-3 text-right font-black text-gray-900 whitespace-nowrap">{formatCurrency(parseFloat(row['Total General']) || 0)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr className="bg-gray-50 border-y-2 border-gray-800">
+                            <td colSpan={5} className="py-4 px-3 text-right font-black uppercase text-sm text-gray-800 tracking-wider">Total Generado</td>
+                            <td className="py-4 px-3 text-right font-black text-lg text-gray-900">{formatCurrency(selectedSourceDetail.revenue)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                {/* Footer Profesional */}
+                <div className="mt-12 pt-4 border-t border-gray-300 text-center">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                        Este documento es de uso interno y estrictamente confidencial.
+                    </p>
+                </div>
+            </div>
+        )}
         </>
     );
 }
