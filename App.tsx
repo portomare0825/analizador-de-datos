@@ -143,19 +143,19 @@ function AppContent() {
     const appVersion = `v${pkg.version}`;
 
     return (
-        <div className="flex flex-col h-screen bg-brand-950 text-brand-50 font-sans overflow-hidden relative">
+        <div className="flex flex-col h-screen print:h-auto bg-brand-950 text-brand-50 font-sans overflow-hidden print:overflow-visible relative print:bg-white">
             {/* Imagen de fondo contable con degradado (idéntico al del Login) */}
             <div 
-                className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-overlay pointer-events-none z-0"
+                className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-overlay pointer-events-none z-0 print:hidden"
                 style={{ backgroundImage: "url('login-bg.png')" }}
             ></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-brand-950 via-transparent to-brand-950 pointer-events-none z-0"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-950 via-transparent to-brand-950 pointer-events-none z-0 print:hidden"></div>
 
             {/* Círculos de fondo decorativos */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px] pointer-events-none z-0 print:hidden"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none z-0 print:hidden"></div>
 
-            <div className="flex flex-col h-full w-full relative z-10 overflow-hidden">
+            <div className="flex flex-col h-full print:h-auto w-full relative z-10 overflow-hidden print:overflow-visible">
                 {/* Banner de Actualización Automática */}
                 <AutoUpdateBanner 
                     status={updateStatus}
@@ -164,11 +164,11 @@ function AppContent() {
                     onClose={() => setUpdateStatus('none')}
                 />
 
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden print:overflow-visible print:block">
 
                 {/* Sidebar Desktop - Más compacto y translúcido */}
                 <aside
-                    className={`hidden md:flex flex-col bg-brand-900/60 backdrop-blur-xl border-r border-brand-800 transition-all duration-300 ease-in-out z-20 ${isCollapsed ? 'w-16' : 'w-56'
+                    className={`hidden md:flex print:hidden flex-col bg-brand-900/60 backdrop-blur-xl border-r border-brand-800 transition-all duration-300 ease-in-out z-20 ${isCollapsed ? 'w-16' : 'w-56'
                         }`}
                 >
                     {/* Header Logo */}
@@ -382,7 +382,7 @@ function AppContent() {
                 </aside>
 
                 {/* Mobile Header & Menu Overlay (Sin cambios mayores, solo diseño responsivo) */}
-                <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-brand-900/60 backdrop-blur-xl border-b border-brand-800 z-30 flex items-center justify-between px-4 shadow-md">
+                <div className="md:hidden print:hidden fixed top-0 left-0 right-0 h-16 bg-brand-900/60 backdrop-blur-xl border-b border-brand-800 z-30 flex items-center justify-between px-4 shadow-md">
                     <div className="flex items-center gap-2">
                         <div className="bg-brand-800 p-1 rounded-lg shrink-0">
                             <img src="icons/icon.png" alt="Logo" className="w-7 h-7 object-contain" />
@@ -472,8 +472,8 @@ function AppContent() {
                 )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 relative overflow-y-auto pt-16 md:pt-0 scrollbar-thin scrollbar-thumb-brand-800 scrollbar-track-brand-950">
-                    <div className="min-h-full flex flex-col">
+                <main className="flex-1 relative overflow-y-auto print:overflow-visible pt-16 md:pt-0 scrollbar-thin scrollbar-thumb-brand-800 scrollbar-track-brand-950">
+                    <div className="min-h-full print:h-auto print:block flex flex-col">
                         <div className="flex-1">
                             {renderContent()}
                         </div>

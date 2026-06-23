@@ -895,8 +895,22 @@ export function DashboardPage() {
                     </div>
                     <div className="text-right">
                         <h1 className="text-2xl font-black uppercase tracking-tight text-gray-800">{selectedSourceDetail.name}</h1>
-                        <p className="text-sm font-semibold text-gray-600 mt-1">Total: {selectedSourceDetail.rows.length} registros</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Generado: {new Date().toLocaleString('es-VE')}</p>
+                        {(() => {
+                            const tA = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Adultos']) || 0), 0);
+                            const tK = selectedSourceDetail.rows.reduce((s: number, r: any) => s + (parseInt(r['Niños']) || 0), 0);
+                            let totalRooms = 0;
+                            selectedSourceDetail.rows.forEach((r: any) => {
+                                const rc = (r['Numero de habitacion'] || '').toString().split(',').filter((s: string) => s.trim().length > 0).length || 1;
+                                totalRooms += rc;
+                            });
+                            return (
+                                <div className="mt-2 flex flex-col items-end gap-1">
+                                    <p className="text-sm font-bold text-gray-600">{selectedSourceDetail.rows.length} Registros (Reservas) <span className="mx-2">|</span> <span className="text-gray-900 font-black">{totalRooms} Habitaciones</span></p>
+                                    <p className="text-xs font-semibold text-gray-500">{tA} Adultos <span className="mx-2">·</span> {tK} Niños</p>
+                                </div>
+                            );
+                        })()}
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-3">Generado: {new Date().toLocaleString('es-VE')}</p>
                     </div>
                 </div>
 
