@@ -753,7 +753,14 @@ export function DashboardPage() {
                                         <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Detalle de Reservas</span>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectedSourceDetail(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/40 hover:text-white"><X className="w-6 h-6" /></button>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => window.print()} className="p-2 hover:bg-brand-500/20 rounded-full transition-colors text-brand-400 hover:text-brand-300 group" title="Imprimir Lista">
+                                        <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    </button>
+                                    <button onClick={() => setSelectedSourceDetail(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/40 hover:text-white" title="Cerrar">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
                             </div>
                             <h3 className="text-4xl font-black text-white mb-1 tracking-tight">{selectedSourceDetail.name}</h3>
                             <p className="text-sm font-medium text-brand-500 uppercase tracking-wide">Total de {selectedSourceDetail.rows.length} registros encontrados</p>
