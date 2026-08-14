@@ -249,6 +249,45 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
     const [manualRates, setManualRates] = useState<Record<string, string>>({});
     const [accountNotes, setAccountNotes] = useState<any[]>([]);
     const [manualRows, setManualRows] = useState<ManualRow[]>([]); // Estado para filas manuales
+    const [isAddManualRowModalOpen, setIsAddManualRowModalOpen] = useState(false);
+    const [newManualRowData, setNewManualRowData] = useState<Partial<ManualRow>>({});
+
+    const [savedDescriptions, setSavedDescriptions] = useState<string[]>([]);
+    const [savedNotes, setSavedNotes] = useState<string[]>([]);
+    const [isManageOptionsModalOpen, setIsManageOptionsModalOpen] = useState(false);
+    const [managingOptionType, setManagingOptionType] = useState<'descripcion' | 'nota'>('descripcion');
+    const [newOptionValue, setNewOptionValue] = useState('');
+
+    useEffect(() => {
+        const localDesc = localStorage.getItem('autocomplete_desc');
+        const localNotes = localStorage.getItem('autocomplete_notes');
+        if (localDesc) setSavedDescriptions(JSON.parse(localDesc));
+        if (localNotes) setSavedNotes(JSON.parse(localNotes));
+    }, []);
+
+    const uniqueDescriptions = useMemo(() => {
+        const descSet = new Set<string>([...savedDescriptions]);
+        data.forEach(row => {
+            if (row.Descripcion) descSet.add(String(row.Descripcion));
+            if (row.descripcion) descSet.add(String(row.descripcion));
+        });
+        manualRows.forEach(row => {
+            if (row.descripcion) descSet.add(String(row.descripcion));
+        });
+        return Array.from(descSet).filter(Boolean).sort();
+    }, [data, manualRows, savedDescriptions]);
+
+    const uniqueNotes = useMemo(() => {
+        const noteSet = new Set<string>([...savedNotes]);
+        data.forEach(row => {
+            if (row.Nota) noteSet.add(String(row.Nota));
+            if (row.nota) noteSet.add(String(row.nota));
+        });
+        manualRows.forEach(row => {
+            if (row.nota) noteSet.add(String(row.nota));
+        });
+        return Array.from(noteSet).filter(Boolean).sort();
+    }, [data, manualRows, savedNotes]);
 
     // States for Edit Global Rate Modal
     const [isEditingRate, setIsEditingRate] = useState(false);
@@ -788,6 +827,33 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
         }));
     };
 
+    // --- Local Storage Autocomplete Handlers ---
+    const handleAddOption = () => {
+        if (!newOptionValue.trim()) return;
+        if (managingOptionType === 'descripcion') {
+            const updated = Array.from(new Set([...savedDescriptions, newOptionValue.trim()])).sort();
+            setSavedDescriptions(updated);
+            localStorage.setItem('autocomplete_desc', JSON.stringify(updated));
+        } else {
+            const updated = Array.from(new Set([...savedNotes, newOptionValue.trim()])).sort();
+            setSavedNotes(updated);
+            localStorage.setItem('autocomplete_notes', JSON.stringify(updated));
+        }
+        setNewOptionValue('');
+    };
+
+    const handleDeleteOption = (val: string) => {
+        if (managingOptionType === 'descripcion') {
+            const updated = savedDescriptions.filter(d => d !== val);
+            setSavedDescriptions(updated);
+            localStorage.setItem('autocomplete_desc', JSON.stringify(updated));
+        } else {
+            const updated = savedNotes.filter(n => n !== val);
+            setSavedNotes(updated);
+            localStorage.setItem('autocomplete_notes', JSON.stringify(updated));
+        }
+    };
+
     // --- Manual Row Handlers ---
     const handleAddManualRow = () => {
         const today = new Date().toISOString().split('T')[0];
@@ -805,6 +871,21 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                 usuario: currentUser
             }
         ]);
+    };
+
+    const handleOpenAddManualRowModal = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const currentUser = profile?.nombre || profile?.name || profile?.email || '';
+        setNewManualRowData({
+            descripcion: '',
+            nota: '',
+            debito: '',
+            credito: '',
+            tasa: '',
+            fecha: today,
+            usuario: currentUser
+        });
+        setIsAddManualRowModalOpen(true);
     };
 
     const handleManualRowChange = (id: string, field: keyof ManualRow, value: string) => {
@@ -1984,7 +2065,7 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                         Nuevas Transacciones a Agregar
                                     </h4>
                                     <button
-                                        onClick={handleAddManualRow}
+                                        onClick={handleOpenAddManualRowModal}
                                         className="flex items-center gap-1.5 px-2 py-1 bg-brand-700/50 hover:bg-brand-600/50 text-brand-300 hover:text-white rounded border border-brand-600/50 text-xs font-semibold transition-colors"
                                         title="Agregar fila manual"
                                     >
@@ -2593,6 +2674,141 @@ export const DataTable: React.FC<DataTableProps> = ({ headers, data, originalHea
                                     </>
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Modal para Agregar Fila Manual */}
+            {isAddManualRowModalOpen && createPortal(
+                <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 bg-brand-950/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsAddManualRowModalOpen(false)}>
+                    <div className="bg-brand-900 border border-brand-700 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-brand-800 bg-brand-800/50 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <PlusIcon className="w-5 h-5 text-brand-400" />
+                                Agregar Fila Manual
+                            </h3>
+                            <button onClick={() => setIsAddManualRowModalOpen(false)} className="text-brand-400 hover:text-white transition-colors">
+                                <CloseIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-xs font-bold text-brand-300 uppercase tracking-wider">Descripción</label>
+                                        <button type="button" onClick={() => { setManagingOptionType('descripcion'); setIsManageOptionsModalOpen(true); }} className="text-brand-400 hover:text-white transition-colors" title="Administrar opciones guardadas">
+                                            <PencilSquareIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <input type="text" list="descripciones-list" className="w-full bg-brand-950 border border-brand-700 rounded px-3 py-2 text-green-400 font-medium focus:outline-none focus:border-brand-500" value={newManualRowData.descripcion || ''} onChange={e => setNewManualRowData({...newManualRowData, descripcion: e.target.value})} autoFocus />
+                                    <datalist id="descripciones-list">
+                                        {uniqueDescriptions.map((desc, idx) => (
+                                            <option key={idx} value={desc} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-xs font-bold text-brand-300 uppercase tracking-wider">Nota (Opcional)</label>
+                                        <button type="button" onClick={() => { setManagingOptionType('nota'); setIsManageOptionsModalOpen(true); }} className="text-brand-400 hover:text-white transition-colors" title="Administrar opciones guardadas">
+                                            <PencilSquareIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <input type="text" list="notas-list" className="w-full bg-brand-950 border border-brand-700 rounded px-3 py-2 text-green-400 font-medium focus:outline-none focus:border-brand-500" value={newManualRowData.nota || ''} onChange={e => setNewManualRowData({...newManualRowData, nota: e.target.value})} />
+                                    <datalist id="notas-list">
+                                        {uniqueNotes.map((note, idx) => (
+                                            <option key={idx} value={note} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-brand-300 uppercase tracking-wider mb-1">Débito</label>
+                                    <input type="number" step="0.01" className="w-full bg-brand-950 border border-brand-700 rounded px-3 py-2 text-brand-100 text-right focus:outline-none focus:border-brand-500" placeholder="0.00" value={newManualRowData.debito || ''} onChange={e => setNewManualRowData({...newManualRowData, debito: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-brand-300 uppercase tracking-wider mb-1">Crédito</label>
+                                    <input type="number" step="0.01" className="w-full bg-brand-950 border border-brand-700 rounded px-3 py-2 text-green-400 font-medium text-right focus:outline-none focus:border-brand-500" placeholder="0.00" value={newManualRowData.credito || ''} onChange={e => setNewManualRowData({...newManualRowData, credito: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-brand-300 uppercase tracking-wider mb-1">Tasa</label>
+                                    <input type="number" step="0.01" className="w-full bg-brand-950 border border-brand-700 rounded px-3 py-2 text-brand-300 text-right focus:outline-none focus:border-brand-500" placeholder="0.00" value={newManualRowData.tasa || ''} onChange={e => setNewManualRowData({...newManualRowData, tasa: e.target.value})} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-brand-800 bg-brand-800/50 flex justify-end gap-3">
+                            <button onClick={() => setIsAddManualRowModalOpen(false)} className="px-4 py-2 bg-brand-800 hover:bg-brand-700 text-brand-200 font-semibold rounded-lg transition-colors border border-brand-700">Cancelar</button>
+                            <button onClick={() => {
+                                const desc = newManualRowData.descripcion?.trim();
+                                if (desc && !savedDescriptions.includes(desc)) {
+                                    const updatedDesc = Array.from(new Set([...savedDescriptions, desc])).sort();
+                                    setSavedDescriptions(updatedDesc);
+                                    localStorage.setItem('autocomplete_desc', JSON.stringify(updatedDesc));
+                                }
+
+                                const note = newManualRowData.nota?.trim();
+                                if (note && !savedNotes.includes(note)) {
+                                    const updatedNotes = Array.from(new Set([...savedNotes, note])).sort();
+                                    setSavedNotes(updatedNotes);
+                                    localStorage.setItem('autocomplete_notes', JSON.stringify(updatedNotes));
+                                }
+
+                                setManualRows(prev => [...prev, { ...newManualRowData, id: `manual-${Date.now()}` } as ManualRow]);
+                                setIsAddManualRowModalOpen(false);
+                            }} className="flex items-center gap-2 px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg shadow-lg transition-colors">
+                                <PlusIcon className="w-5 h-5" />
+                                Agregar Fila
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Modal para Administrar Opciones Guardadas */}
+            {isManageOptionsModalOpen && createPortal(
+                <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-brand-950/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsManageOptionsModalOpen(false)}>
+                    <div className="bg-brand-900 border border-brand-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-brand-800 bg-brand-800/50 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <PencilSquareIcon className="w-5 h-5 text-brand-400" />
+                                Opciones Guardadas ({managingOptionType === 'descripcion' ? 'Descripción' : 'Nota'})
+                            </h3>
+                            <button onClick={() => setIsManageOptionsModalOpen(false)} className="text-brand-400 hover:text-white transition-colors">
+                                <CloseIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 border-b border-brand-800">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    className="flex-1 bg-brand-950 border border-brand-700 rounded px-3 py-2 text-white focus:outline-none focus:border-brand-500 text-sm" 
+                                    placeholder="Agregar nueva opción..." 
+                                    value={newOptionValue} 
+                                    onChange={e => setNewOptionValue(e.target.value)} 
+                                    onKeyDown={e => { if (e.key === 'Enter') handleAddOption() }}
+                                />
+                                <button onClick={handleAddOption} className="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded font-bold text-sm flex items-center transition-colors">
+                                    <PlusIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1 space-y-2">
+                            {(managingOptionType === 'descripcion' ? savedDescriptions : savedNotes).length === 0 ? (
+                                <p className="text-brand-400 text-sm text-center italic py-4">No hay opciones guardadas localmente.</p>
+                            ) : (
+                                (managingOptionType === 'descripcion' ? savedDescriptions : savedNotes).map((opt, idx) => (
+                                    <div key={idx} className="flex justify-between items-center bg-brand-950/50 p-2 rounded border border-brand-800">
+                                        <span className="text-white text-sm truncate pr-2">{opt}</span>
+                                        <button onClick={() => handleDeleteOption(opt)} className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-950/30 transition-colors" title="Eliminar opción">
+                                            <TrashIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>,
